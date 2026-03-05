@@ -1,10 +1,14 @@
 {
   "dependencies": {
+    "com.endel.nativewebsocket": "https://github.com/endel/NativeWebSocket.git#upm",
+    "com.firedragongamestudio.simplewebrtc": "https://github.com/FireDragonGameStudio/SimpleWebRTC.git?path=/Assets/SimpleWebRTC",
     "com.meta.xr.mrutilitykit": "85.0.0",
+    "com.unity.ai.inference": "2.2.1",
     "com.unity.feature.development": "1.0.2",
     "com.unity.mobile.android-logcat": "1.4.6",
-    "com.unity.ai.inference": "2.2.1",
+    "com.unity.render-pipelines.universal": "17.0.4",
     "com.unity.ugui": "2.0.0",
+    "com.unity.webrtc": "https://github.com/Unity-Technologies/com.unity.webrtc.git",
     "com.unity.xr.management": "4.5.3",
     "com.unity.xr.openxr": "1.15.1",
     "com.unity.modules.ai": "1.0.0",
