@@ -6,6 +6,8 @@ using UnityEngine.Rendering;
 public class PassthroughVideo : MonoBehaviour, VideoInterface
 {
     [SerializeField] PassthroughCameraAccess passthroughCameraLeft;
+    [SerializeField] PassthroughCameraAccess passthroughCameraRight;
+    [SerializeField] Material sideBySideMat;
     [SerializeField] bool useStereoPassthrough;
     Coroutine blitCoroutine;
 
@@ -39,21 +41,19 @@ public class PassthroughVideo : MonoBehaviour, VideoInterface
                     Texture src = passthroughCameraLeft.GetTexture();
                     if (src != null) Graphics.Blit(src, target);
                 }
-                /*else
+                else
                 {
-                    Debug.Log("-----------STEREO PASSTHROUGH-------------");
                     Texture left = passthroughCameraLeft.GetTexture();
                     Texture right = passthroughCameraRight.GetTexture();
+
                     if (left != null && right != null)
                     {
-                        cmd.Clear();
-                        cmd.SetRenderTarget(target);
-                        cmd.Blit(left, target, new Vector2(0.5f, 1f), new Vector2(0f, 0f));
-                        cmd.Blit(right, target, new Vector2(0.5f, 1f), new Vector2(0.5f, 0f));
-                        Graphics.ExecuteCommandBuffer(cmd);
+                        sideBySideMat.SetTexture("_LeftTex", left);
+                        sideBySideMat.SetTexture("_RightTex", right);
+                        Graphics.Blit(null, target, sideBySideMat);
                     }
                 }
-            }*/
+                yield return null;
             }
             yield return null;
         }
