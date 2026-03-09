@@ -3,6 +3,7 @@
     "com.endel.nativewebsocket": "https://github.com/endel/NativeWebSocket.git#upm",
     "com.firedragongamestudio.simplewebrtc": "https://github.com/FireDragonGameStudio/SimpleWebRTC.git?path=/Assets/SimpleWebRTC",
     "com.meta.xr.mrutilitykit": "85.0.0",
+    "com.meta.xr.sdk.core": "85.0.0",
     "com.unity.ai.inference": "2.2.1",
     "com.unity.feature.development": "1.0.2",
     "com.unity.mobile.android-logcat": "1.4.6",

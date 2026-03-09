@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/PassthroughCameraApiSamples/StartScene/StartScene.unity
     guid: 69e1b31c45bac42f88f75017ee404de1
   - enabled: 1
-    path: Assets/CameraViewer.unity
+    path: Assets/Scenes/1. Streaming.unity
     guid: ad5bb12b10679b840999aa322aa7a491
   - enabled: 0
     path: Assets/PassthroughCameraApiSamples/CameraToWorld/CameraToWorld.unity
