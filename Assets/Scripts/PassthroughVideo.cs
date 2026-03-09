@@ -10,6 +10,7 @@ public class PassthroughVideo : MonoBehaviour, VideoInterface
     [SerializeField] Material sideBySideMat;
     [SerializeField] bool useStereoPassthrough;
     Coroutine blitCoroutine;
+    private Material _blitMat;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -25,35 +26,26 @@ public class PassthroughVideo : MonoBehaviour, VideoInterface
 
     public RenderTexture initVideo(RenderTexture target)
     {
-        StartCoroutine(BlitPassthrough(target));
+        StartCoroutine(BlitPassthroughStereo(target));
         return target;
     }
 
-    private IEnumerator BlitPassthrough(RenderTexture target)
+    private IEnumerator BlitPassthroughStereo(RenderTexture target)
     {
-        var cmd = new CommandBuffer();
+        _blitMat = Instantiate(sideBySideMat); // istanza privata
+
         while (true)
         {
-            if (passthroughCameraLeft.IsPlaying)
+            if (passthroughCameraLeft.IsPlaying && passthroughCameraRight.IsPlaying)
             {
-                if (!useStereoPassthrough)
-                {
-                    Texture src = passthroughCameraLeft.GetTexture();
-                    if (src != null) Graphics.Blit(src, target);
-                }
-                else
-                {
-                    Texture left = passthroughCameraLeft.GetTexture();
-                    Texture right = passthroughCameraRight.GetTexture();
+                Texture left = passthroughCameraLeft.GetTexture();
+                Texture right = passthroughCameraRight.GetTexture();
 
-                    if (left != null && right != null)
-                    {
-                        sideBySideMat.SetTexture("_LeftTex", left);
-                        sideBySideMat.SetTexture("_RightTex", right);
-                        Graphics.Blit(null, target, sideBySideMat);
-                    }
+                if (left != null && right != null)
+                {
+                    _blitMat.SetTexture("_RightTex", right);
+                    Graphics.Blit(left, target, _blitMat);
                 }
-                yield return null;
             }
             yield return null;
         }
