@@ -1,36 +1,45 @@
 using System.Collections;
 using Meta.XR;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UI;
 
-public class PassthroughVideo : MonoBehaviour, VideoInterface
+
+public class PassthroughManager : MonoBehaviour
 {
     [SerializeField] PassthroughCameraAccess passthroughCameraLeft;
     [SerializeField] PassthroughCameraAccess passthroughCameraRight;
     [SerializeField] Material sideBySideMat;
     [SerializeField] bool useStereoPassthrough;
+
+    private RenderTexture target;
+
+    [SerializeField] Text timestampText;
+
+    [SerializeField] private RawImage rawImage;
     Coroutine blitCoroutine;
     private Material _blitMat;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-
+        StartCoroutine(BlitPassthrough());
+        timestampText.text = "Timestamp: ";
     }
 
     // Update is called once per frame
     void Update()
     {
-
     }
 
-    public RenderTexture initVideo(RenderTexture target)
+    /*public RenderTexture ShowPasstrough(RenderTexture target)
     {
         StartCoroutine(BlitPassthrough(target));
         return target;
-    }
+    }*/
 
-    private IEnumerator BlitPassthrough(RenderTexture target)
+    private IEnumerator BlitPassthrough()
     {
         _blitMat = Instantiate(sideBySideMat);
 
@@ -40,28 +49,20 @@ public class PassthroughVideo : MonoBehaviour, VideoInterface
             {
                 Texture left = passthroughCameraLeft.GetTexture();
 
-                if (useStereoPassthrough && passthroughCameraRight.IsPlaying)
+                if (left != null)
                 {
-                    Texture right = passthroughCameraRight.GetTexture();
-                    if (left != null && right != null)
+                    if (target==null)
                     {
-                        _blitMat.SetTexture("_RightTex", right);
-                        Graphics.Blit(left, target, _blitMat);
+                        target = new RenderTexture(left.width, left.height, 0, RenderTextureFormat.BGRA32);
+                        target.Create();
                     }
-                }
-                else
-                {
-                    if (left != null)
-                        Graphics.Blit(left, target);
+                    rawImage.texture = target;
+                    Graphics.Blit(left, target);
+                    //timestampText.text = "Timestamp: " + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss");
+                    timestampText.text = "Pose: " + passthroughCameraLeft.GetCameraPose().position;
                 }
             }
             yield return null;
         }
-    }
-
-    void VideoInterface.stop()
-    {
-        if (blitCoroutine != null)
-            StopCoroutine(blitCoroutine);
     }
 }

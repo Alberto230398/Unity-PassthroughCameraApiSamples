@@ -11,6 +11,8 @@ public class GetDepthMaps : MonoBehaviour
     private RenderTexture _previewRT;
     [SerializeField] Material depthMaterial;
 
+    [SerializeField] Text timestampText;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
