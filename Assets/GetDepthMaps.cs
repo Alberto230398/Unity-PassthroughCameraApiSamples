@@ -22,6 +22,8 @@ public class GetDepthMaps : MonoBehaviour
     void Update()
     {
         UpdateDepthPreview();
+        var depthPose = OVRPlugin.GetNodePoseStateImmediate(OVRPlugin.Node.Head).Pose.ToOVRPose();
+        timestampText.text = "Pose: " + depthPose.position;
     }
 
     private Texture GetDepthTexture()
