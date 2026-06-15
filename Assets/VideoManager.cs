@@ -18,8 +18,8 @@ public class VideoManager : MonoBehaviour
     RenderTexture camRenderTexture;
     VideoInterface currentSource;
 
-    void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
-    void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
+    //void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
+    //void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
 
     bool videoActive;
 
