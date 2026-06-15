@@ -1533,7 +1533,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.29803923}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -1587,6 +1587,7 @@ MonoBehaviour:
   translationThreshold: 0.1
   rotationThreshold: 5
   passthroughCameraLeft: {fileID: 1748868315344937867}
+  passthroughCameraRight: {fileID: 964992456}
   depthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
 --- !u!4 &2039053024
 Transform:
@@ -1772,8 +1773,12 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7778735864111554172, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 1.208
+      objectReference: {fileID: 0}
+    - target: {fileID: 7778735864111554172, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0.863
+      value: -0.632
       objectReference: {fileID: 0}
     - target: {fileID: 7778735864111554172, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
       propertyPath: m_AnchoredPosition.y

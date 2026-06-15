@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
 using System.Collections.Generic;
+using Meta.XR.EnvironmentDepth;
 
 public class KeyFrameManager : MonoBehaviour
 {
@@ -15,8 +16,12 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] float rotationThreshold = 5f; // 5 gradi
 
     [SerializeField] PassthroughCameraAccess passthroughCameraLeft;
+    [SerializeField] PassthroughCameraAccess passthroughCameraRight;
     [SerializeField] Material depthMaterial;
     private RenderTexture target;
+    private RenderTexture rightTarget;
+
+    [SerializeField] private EnvironmentDepthManager environmentDepthManager;
 
     private List<Keyframe> keyframes = new List<Keyframe>();
 
@@ -43,6 +48,7 @@ public class KeyFrameManager : MonoBehaviour
     void CaptureKeyframe()
     {
         var pose = passthroughCameraLeft.GetCameraPose();
+        var righjtPose = passthroughCameraRight.GetCameraPose();
         var depthTex = Shader.GetGlobalTexture("_EnvironmentDepthTexture");
 
         if (depthTex == null || !passthroughCameraLeft.IsPlaying) return;
@@ -56,19 +62,31 @@ public class KeyFrameManager : MonoBehaviour
             target.Create();
         }
 
+        if (rightTarget == null)
+        {
+            var camTex = passthroughCameraRight.GetTexture();
+            if (camTex == null) return;
+            rightTarget = new RenderTexture(camTex.width, camTex.height, 0, RenderTextureFormat.BGRA32);
+            rightTarget.Create();
+        }
+
         // aggiorna target con il frame corrente
         Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
+        Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
 
         Texture2D rgb = SaveFrame(target);
-        Texture2D depth = SaveDepthFrame(depthTex);
+        Texture2D depth = SaveDepthFrame(depthTex, target);
+        Texture2D rgbRight = SaveFrame(rightTarget);
 
         var kf = new Keyframe
         {
             rgb = rgb,
             depth = depth,
+            rgbRight = rgbRight,
             position = pose.position,
             rotation = pose.rotation,
-            timestamp = passthroughCameraLeft.Timestamp
+            timestamp = passthroughCameraLeft.Timestamp,
+            intrinsics = passthroughCameraLeft.Intrinsics
         };
 
         keyframes.Add(kf);
@@ -84,7 +102,11 @@ public class KeyFrameManager : MonoBehaviour
 
         // RGB
         byte[] rgbBytes = kf.rgb.EncodeToPNG();
-        System.IO.File.WriteAllBytes($"{dir}/rgb.png", rgbBytes);
+        System.IO.File.WriteAllBytes($"{dir}/LeftRGB.png", rgbBytes);
+
+        // RGB Right
+        byte[] rgbRightBytes = kf.rgbRight.EncodeToPNG();
+        System.IO.File.WriteAllBytes($"{dir}/RightRGB.png", rgbRightBytes);
 
         // Depth
         byte[] depthBytes = kf.depth.EncodeToEXR();
@@ -97,7 +119,16 @@ public class KeyFrameManager : MonoBehaviour
             rx = kf.rotation.x, ry = kf.rotation.y, rz = kf.rotation.z, rw = kf.rotation.w,
             timestamp = kf.timestamp.ToString("HH:mm:ss:fff")
         });
+
+        // RGB Intrinsics
+        string RGBIntrinsics = JsonUtility.ToJson(new Intrinsics
+        {
+            FocalLength = kf.intrinsics.FocalLength,
+            PrincipalPoint = kf.intrinsics.PrincipalPoint,
+            SensorResolution = kf.intrinsics.SensorResolution
+        });
         System.IO.File.WriteAllText($"{dir}/pose.json", pose);
+        System.IO.File.WriteAllText($"{dir}/intrinsics.json", RGBIntrinsics);
     }
 
     Texture2D SaveFrame(RenderTexture rt)
@@ -110,7 +141,7 @@ public class KeyFrameManager : MonoBehaviour
         return tex;
     }
 
-    Texture2D SaveDepthFrame(Texture depthTexArray)
+    Texture2D SaveDepthFrame(Texture depthTexArray, RenderTexture temp)
     {
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.RFloat);
         rt.Create();
@@ -125,16 +156,25 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(rt);
         return tex;
     }
+
+    void RGBIntrinsics(PassthroughCameraAccess cam)
+    {
+        var intrinsics = cam.Intrinsics;
+        Debug.Log($"Intrinsics: {intrinsics.FocalLength}, {intrinsics.PrincipalPoint}, {intrinsics.SensorResolution}");
+    }
 }
 
 [System.Serializable]
 public struct Keyframe
 {
     public Texture2D rgb;
+    public Texture2D rgbRight;
     public Texture2D depth;
     public Vector3 position;
     public Quaternion rotation;
     public System.DateTime timestamp;
+    public PassthroughCameraAccess.CameraIntrinsics intrinsics;
+    public EnvironmentDepthManager depthManager;
 }
 
 [System.Serializable]
@@ -143,4 +183,12 @@ struct PoseData
     public float px, py, pz;
     public float rx, ry, rz, rw;
     public string timestamp;
+}
+
+[System.Serializable]
+struct Intrinsics
+{
+    public Vector2 FocalLength;
+    public Vector2 PrincipalPoint;
+    public Vector2 SensorResolution;
 }
