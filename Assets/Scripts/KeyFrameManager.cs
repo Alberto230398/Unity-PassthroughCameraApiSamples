@@ -6,6 +6,7 @@ using UnityEngine.Rendering;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using Meta.XR.EnvironmentDepth;
+using Unity.XR.Oculus;
 
 public class KeyFrameManager : MonoBehaviour
 {
@@ -21,13 +22,13 @@ public class KeyFrameManager : MonoBehaviour
     private RenderTexture target;
     private RenderTexture rightTarget;
 
-    [SerializeField] private EnvironmentDepthManager environmentDepthManager;
-
     private List<Keyframe> keyframes = new List<Keyframe>();
 
     void Start()
     {
         CaptureKeyframe();
+
+        //_occlusionSubsystem = loader.GetLoadedSubsystem<XROcclusionSubsystem>() as MetaOpenXROcclusionSubsystem;
     }
 
     void Update()
@@ -78,6 +79,16 @@ public class KeyFrameManager : MonoBehaviour
         Texture2D depth = SaveDepthFrame(depthTex, target);
         Texture2D rgbRight = SaveFrame(rightTarget);
 
+        Matrix4x4[] reproj = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
+        Vector4 zParams = Shader.GetGlobalVector("_EnvironmentDepthZBufferParams");
+
+        Matrix4x4 proj = Matrix4x4.identity;
+
+        if (reproj != null && reproj.Length > 0)
+        {
+            proj = reproj[0]; // proj * view per occhio sinistro, in tracking space
+        }
+
         var kf = new Keyframe
         {
             rgb = rgb,
@@ -86,7 +97,8 @@ public class KeyFrameManager : MonoBehaviour
             position = pose.position,
             rotation = pose.rotation,
             timestamp = passthroughCameraLeft.Timestamp,
-            intrinsics = passthroughCameraLeft.Intrinsics
+            intrinsics = passthroughCameraLeft.Intrinsics,
+            reprojectionMatrix = proj
         };
 
         keyframes.Add(kf);
@@ -127,8 +139,12 @@ public class KeyFrameManager : MonoBehaviour
             PrincipalPoint = kf.intrinsics.PrincipalPoint,
             SensorResolution = kf.intrinsics.SensorResolution
         });
+        
         System.IO.File.WriteAllText($"{dir}/pose.json", pose);
         System.IO.File.WriteAllText($"{dir}/intrinsics.json", RGBIntrinsics);
+        // Reprojection Matrix
+        string reproj = JsonUtility.ToJson(kf.reprojectionMatrix);
+        System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
     }
 
     Texture2D SaveFrame(RenderTexture rt)
@@ -174,7 +190,7 @@ public struct Keyframe
     public Quaternion rotation;
     public System.DateTime timestamp;
     public PassthroughCameraAccess.CameraIntrinsics intrinsics;
-    public EnvironmentDepthManager depthManager;
+    public Matrix4x4 reprojectionMatrix;
 }
 
 [System.Serializable]
