@@ -22,6 +22,8 @@ public class KeyFrameManager : MonoBehaviour
     private RenderTexture target;
     private RenderTexture rightTarget;
 
+    public Camera leftCamera;
+
     private List<Keyframe> keyframes = new List<Keyframe>();
 
     void Start()
@@ -84,6 +86,8 @@ public class KeyFrameManager : MonoBehaviour
 
         Matrix4x4 proj = Matrix4x4.identity;
 
+        var matr = leftCamera.projectionMatrix;
+
         if (reproj != null && reproj.Length > 0)
         {
             proj = reproj[0]; // proj * view per occhio sinistro, in tracking space
@@ -98,7 +102,8 @@ public class KeyFrameManager : MonoBehaviour
             rotation = pose.rotation,
             timestamp = passthroughCameraLeft.Timestamp,
             intrinsics = passthroughCameraLeft.Intrinsics,
-            reprojectionMatrix = proj
+            reprojectionMatrix = proj,
+            RGBMatrix = matr
         };
 
         keyframes.Add(kf);
@@ -145,6 +150,9 @@ public class KeyFrameManager : MonoBehaviour
         // Reprojection Matrix
         string reproj = JsonUtility.ToJson(kf.reprojectionMatrix);
         System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
+
+        string rgbMat = JsonUtility.ToJson(kf.RGBMatrix);
+        System.IO.File.WriteAllText($"{dir}/rgbMatrix.json", rgbMat);
     }
 
     Texture2D SaveFrame(RenderTexture rt)
@@ -191,6 +199,7 @@ public struct Keyframe
     public System.DateTime timestamp;
     public PassthroughCameraAccess.CameraIntrinsics intrinsics;
     public Matrix4x4 reprojectionMatrix;
+    public Matrix4x4 RGBMatrix;
 }
 
 [System.Serializable]

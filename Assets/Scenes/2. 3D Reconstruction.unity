@@ -1589,6 +1589,7 @@ MonoBehaviour:
   passthroughCameraLeft: {fileID: 1748868315344937867}
   passthroughCameraRight: {fileID: 964992456}
   depthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
+  leftCamera: {fileID: 499068566}
 --- !u!4 &2039053024
 Transform:
   m_ObjectHideFlags: 0
