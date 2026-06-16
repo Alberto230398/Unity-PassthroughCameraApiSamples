@@ -14,11 +14,13 @@ public class KeyFrameManager : MonoBehaviour
     private Quaternion _lastKeyframeRotation;
 
     [SerializeField] float translationThreshold = 0.1f; // 10cm
-    [SerializeField] float rotationThreshold = 5f; // 5 gradi
+    [SerializeField] float rotationThreshold = 5f; // 5 degrees
 
     [SerializeField] PassthroughCameraAccess passthroughCameraLeft;
     [SerializeField] PassthroughCameraAccess passthroughCameraRight;
-    [SerializeField] Material depthMaterial;
+    [SerializeField] Material depthMaterial;            // Legacy preview shader (DepthShader)
+    [SerializeField] Material registrationMaterial;     // DepthRegistration shader for aligned output
+
     private RenderTexture target;
     private RenderTexture rightTarget;
 
@@ -27,17 +29,15 @@ public class KeyFrameManager : MonoBehaviour
     void Start()
     {
         CaptureKeyframe();
-
-        //_occlusionSubsystem = loader.GetLoadedSubsystem<XROcclusionSubsystem>() as MetaOpenXROcclusionSubsystem;
     }
 
     void Update()
     {
         var pose = passthroughCameraLeft.GetCameraPose();
-    
+
         float translation = Vector3.Distance(pose.position, _lastKeyframePosition);
         float rotation = Quaternion.Angle(pose.rotation, _lastKeyframeRotation);
-    
+
         if (translation > translationThreshold || rotation > rotationThreshold)
         {
             CaptureKeyframe();
@@ -49,12 +49,20 @@ public class KeyFrameManager : MonoBehaviour
     void CaptureKeyframe()
     {
         var pose = passthroughCameraLeft.GetCameraPose();
-        var righjtPose = passthroughCameraRight.GetCameraPose();
+        var rightPose = passthroughCameraRight.GetCameraPose();
         var depthTex = Shader.GetGlobalTexture("_EnvironmentDepthTexture");
 
         if (depthTex == null || !passthroughCameraLeft.IsPlaying) return;
 
-        // inizializza target dalla camera se non esiste
+        // Get reprojection matrices and zBufferParams early — needed for registration
+        Matrix4x4[] reproj = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
+        Vector4 zParams = Shader.GetGlobalVector("_EnvironmentDepthZBufferParams");
+
+        if (reproj == null || reproj.Length == 0) return;
+
+        Matrix4x4 reprojMatrix = reproj[0]; // left eye reprojection matrix
+
+        // Initialize RGB render targets from camera texture dimensions
         if (target == null)
         {
             var camTex = passthroughCameraLeft.GetTexture();
@@ -71,23 +79,23 @@ public class KeyFrameManager : MonoBehaviour
             rightTarget.Create();
         }
 
-        // aggiorna target con il frame corrente
+        // Blit current camera frames to render targets
         Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
         Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
 
+        // Save RGB frames
         Texture2D rgb = SaveFrame(target);
-        Texture2D depth = SaveDepthFrame(depthTex, target);
         Texture2D rgbRight = SaveFrame(rightTarget);
 
-        Matrix4x4[] reproj = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
-        Vector4 zParams = Shader.GetGlobalVector("_EnvironmentDepthZBufferParams");
-
-        Matrix4x4 proj = Matrix4x4.identity;
-
-        if (reproj != null && reproj.Length > 0)
-        {
-            proj = reproj[0]; // proj * view per occhio sinistro, in tracking space
-        }
+        // Save registered depth (reprojected into RGB camera space)
+        var intrinsics = passthroughCameraLeft.Intrinsics;
+        Texture2D depth = SaveRegisteredDepthFrame(
+            depthTex,
+            pose,
+            intrinsics,
+            reprojMatrix,
+            zParams
+        );
 
         var kf = new Keyframe
         {
@@ -97,14 +105,50 @@ public class KeyFrameManager : MonoBehaviour
             position = pose.position,
             rotation = pose.rotation,
             timestamp = passthroughCameraLeft.Timestamp,
-            intrinsics = passthroughCameraLeft.Intrinsics,
-            reprojectionMatrix = proj
+            intrinsics = intrinsics,
+            reprojectionMatrix = reprojMatrix,
+            zBufferParams = zParams,
+            depthResolution = new Vector2(depthTex.width, depthTex.height)
         };
 
         keyframes.Add(kf);
         SaveKeyframeToDisk(kf, keyframes.Count - 1);
 
-        Debug.Log($"Keyframe captured: {keyframes.Count} | pos: {pose.position}");
+        Debug.Log($"Keyframe captured: {keyframes.Count} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
+    }
+
+    /// <summary>
+    /// Reprojects the depth texture into the RGB camera's pixel space using the registration shader.
+    /// Output is a metric-depth RFloat texture at RGB resolution, pixel-aligned with the RGB image.
+    /// </summary>
+    Texture2D SaveRegisteredDepthFrame(Texture depthTexArray, Pose rgbPose,
+        PassthroughCameraAccess.CameraIntrinsics intrinsics, Matrix4x4 reproj, Vector4 zParams)
+    {
+        // Set registration shader uniforms
+        registrationMaterial.SetMatrix("_ReprojMatrix", reproj);
+        registrationMaterial.SetVector("_RGBPosition", rgbPose.position);
+        registrationMaterial.SetMatrix("_RGBRotation", Matrix4x4.Rotate(rgbPose.rotation));
+        registrationMaterial.SetVector("_FocalLength", intrinsics.FocalLength);
+        registrationMaterial.SetVector("_PrincipalPoint", intrinsics.PrincipalPoint);
+        registrationMaterial.SetVector("_SensorResolution", intrinsics.SensorResolution);
+        // _EnvironmentDepthZBufferParams is a global shader variable — accessed directly in shader
+
+        // Output at RGB camera resolution (matches the saved PNG dimensions)
+        int w = target.width;
+        int h = target.height;
+        RenderTexture rt = new RenderTexture(w, h, 0, RenderTextureFormat.RFloat);
+        rt.Create();
+
+        Graphics.Blit(depthTexArray, rt, registrationMaterial);
+
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RFloat, false);
+        RenderTexture.active = rt;
+        tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+        tex.Apply();
+        RenderTexture.active = null;
+
+        Destroy(rt);
+        return tex;
     }
 
     void SaveKeyframeToDisk(Keyframe kf, int index)
@@ -120,7 +164,7 @@ public class KeyFrameManager : MonoBehaviour
         byte[] rgbRightBytes = kf.rgbRight.EncodeToPNG();
         System.IO.File.WriteAllBytes($"{dir}/RightRGB.png", rgbRightBytes);
 
-        // Depth
+        // Registered Depth (metric, pixel-aligned with LeftRGB)
         byte[] depthBytes = kf.depth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
 
@@ -133,18 +177,37 @@ public class KeyFrameManager : MonoBehaviour
         });
 
         // RGB Intrinsics
-        string RGBIntrinsics = JsonUtility.ToJson(new Intrinsics
+        string RGBIntrinsics = JsonUtility.ToJson(new IntrinsicsData
         {
             FocalLength = kf.intrinsics.FocalLength,
             PrincipalPoint = kf.intrinsics.PrincipalPoint,
             SensorResolution = kf.intrinsics.SensorResolution
         });
-        
-        System.IO.File.WriteAllText($"{dir}/pose.json", pose);
-        System.IO.File.WriteAllText($"{dir}/intrinsics.json", RGBIntrinsics);
+
         // Reprojection Matrix
         string reproj = JsonUtility.ToJson(kf.reprojectionMatrix);
+
+        // zBufferParams (for offline verification/debugging of linearization)
+        string zbuf = JsonUtility.ToJson(new ZBufferParamsData
+        {
+            x = kf.zBufferParams.x,
+            y = kf.zBufferParams.y,
+            z = kf.zBufferParams.z,
+            w = kf.zBufferParams.w
+        });
+
+        // Depth texture native resolution (for reference)
+        string depthMeta = JsonUtility.ToJson(new DepthMetaData
+        {
+            width = kf.depthResolution.x,
+            height = kf.depthResolution.y
+        });
+
+        System.IO.File.WriteAllText($"{dir}/pose.json", pose);
+        System.IO.File.WriteAllText($"{dir}/intrinsics.json", RGBIntrinsics);
         System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
+        System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
+        System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
     }
 
     Texture2D SaveFrame(RenderTexture rt)
@@ -157,26 +220,24 @@ public class KeyFrameManager : MonoBehaviour
         return tex;
     }
 
-    Texture2D SaveDepthFrame(Texture depthTexArray, RenderTexture temp)
+    /// <summary>
+    /// Legacy: saves raw depth at native depth camera resolution (unregistered).
+    /// Kept for debug/preview purposes. Not used in the main capture pipeline.
+    /// </summary>
+    Texture2D SaveDepthFrameRaw(Texture depthTexArray)
     {
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.RFloat);
         rt.Create();
-        Graphics.Blit(depthTexArray, rt, depthMaterial); // stesso mat che usi per il preview
-    
+        Graphics.Blit(depthTexArray, rt, depthMaterial);
+
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RFloat, false);
         RenderTexture.active = rt;
         tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
         tex.Apply();
         RenderTexture.active = null;
-    
+
         Destroy(rt);
         return tex;
-    }
-
-    void RGBIntrinsics(PassthroughCameraAccess cam)
-    {
-        var intrinsics = cam.Intrinsics;
-        Debug.Log($"Intrinsics: {intrinsics.FocalLength}, {intrinsics.PrincipalPoint}, {intrinsics.SensorResolution}");
     }
 }
 
@@ -191,6 +252,8 @@ public struct Keyframe
     public System.DateTime timestamp;
     public PassthroughCameraAccess.CameraIntrinsics intrinsics;
     public Matrix4x4 reprojectionMatrix;
+    public Vector4 zBufferParams;
+    public Vector2 depthResolution;
 }
 
 [System.Serializable]
@@ -202,9 +265,21 @@ struct PoseData
 }
 
 [System.Serializable]
-struct Intrinsics
+struct IntrinsicsData
 {
     public Vector2 FocalLength;
     public Vector2 PrincipalPoint;
     public Vector2 SensorResolution;
+}
+
+[System.Serializable]
+struct ZBufferParamsData
+{
+    public float x, y, z, w;
+}
+
+[System.Serializable]
+struct DepthMetaData
+{
+    public float width, height;
 }
