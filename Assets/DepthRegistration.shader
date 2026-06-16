@@ -71,36 +71,36 @@ Shader "Custom/DepthRegistration"
                 for (int iter = 0; iter < 3; iter++)
                 {
                     float4 clip = A + t * B;
-                    float2 depthUV = clip.xy / clip.w;
 
-                    // Bounds check: outside depth FOV coverage
+                    // Convert NDC [-1,1] → UV [0,1].
+                    // The reprojection matrix outputs NDC, not UV directly.
+                    float2 depthUV = clip.xy / clip.w * 0.5 + 0.5;
+
+                    // Bounds check: outside depth camera FOV — no recovery possible.
                     if (depthUV.x < 0.0 || depthUV.x > 1.0 ||
                         depthUV.y < 0.0 || depthUV.y > 1.0)
                     {
-                        return 0.0; // no depth coverage for this RGB pixel
+                        return 0.0;
                     }
 
                     // Sample depth texture array (slice 0 = left eye)
                     float rawDepth = UNITY_SAMPLE_TEX2DARRAY(_MainTex, float3(depthUV, 0)).r;
 
-                    // Linearize to metric depth
+                    // Linearize to metric depth.
+                    // linearZ equals clip.w (depth camera eye-space z) at the true surface.
                     float linearZ = LinearizeDepth(rawDepth);
 
-                    // Update t: solve for the depth along the RGB ray
-                    // The depth camera sees this point at linearZ along clip.w direction
-                    // t_new = linearZ projected back to RGB ray parameter
-                    float denom = B.z / B.w;
-                    if (abs(denom) < 0.0001)
+                    // Solve for t: clip.w = A.w + t * B.w  →  t = (linearZ - A.w) / B.w
+                    if (abs(B.w) < 0.0001)
                     {
-                        return 0.0; // degenerate case
+                        return 0.0; // degenerate: ray is perpendicular to depth camera axis
                     }
-                    t = (linearZ - A.z / A.w) / denom;
+                    t = (linearZ - A.w) / B.w;
                 }
 
                 // 6. Final bounds check and output
-                // Verify final UV is still in bounds
                 float4 finalClip = A + t * B;
-                float2 finalUV = finalClip.xy / finalClip.w;
+                float2 finalUV = finalClip.xy / finalClip.w * 0.5 + 0.5;
                 if (finalUV.x < 0.0 || finalUV.x > 1.0 ||
                     finalUV.y < 0.0 || finalUV.y > 1.0)
                 {
