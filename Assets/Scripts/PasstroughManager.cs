@@ -59,7 +59,7 @@ public class PassthroughManager : MonoBehaviour
                     rawImage.texture = target;
                     Graphics.Blit(left, target);
                     //timestampText.text = "Timestamp: " + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss");
-                    timestampText.text = "Pose: " + passthroughCameraLeft.GetCameraPose().position;
+                    //timestampText.text = "Pose: " + passthroughCameraLeft.GetCameraPose().position;
                 }
             }
             yield return null;

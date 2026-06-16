@@ -17,6 +17,7 @@ public class KeyFrameManager : MonoBehaviour
 
     [SerializeField] PassthroughCameraAccess passthroughCameraLeft;
     [SerializeField] PassthroughCameraAccess passthroughCameraRight;
+    [SerializeField] Camera leftCamera;
     [SerializeField] Material depthMaterial;            // Legacy preview shader (DepthShader)
     [SerializeField] Material registrationMaterial;     // DepthRegistration shader for aligned output
 
@@ -85,9 +86,11 @@ public class KeyFrameManager : MonoBehaviour
         // Save RGB frames
         Texture2D rgb = SaveFrame(target);
         Texture2D rgbRight = SaveFrame(rightTarget);
+        Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
 
         // Save registered depth (reprojected into RGB camera space)
         var intrinsics = passthroughCameraLeft.Intrinsics;
+
         Texture2D depth = SaveRegisteredDepthFrame(
             depthTex,
             pose,
@@ -96,11 +99,14 @@ public class KeyFrameManager : MonoBehaviour
             zParams
         );
 
-        var kf = new Keyframe
+        var rgbMatrix = leftCamera.projectionMatrix;
+
+        var kf = new CapturedKeyframe
         {
             rgb = rgb,
             depth = depth,
             rgbRight = rgbRight,
+            rawDepth = rawDepth,
             position = pose.position,
             rotation = pose.rotation,
             timestamp = passthroughCameraLeft.Timestamp,
@@ -133,16 +139,22 @@ public class KeyFrameManager : MonoBehaviour
         registrationMaterial.SetMatrix("_RGBRotation", Matrix4x4.Rotate(rgbPose.rotation));
         registrationMaterial.SetVector("_FocalLength", intrinsics.FocalLength);
         registrationMaterial.SetVector("_PrincipalPoint", intrinsics.PrincipalPoint);
-        registrationMaterial.SetVector("_SensorResolution", intrinsics.SensorResolution);
-        // _EnvironmentDepthZBufferParams is a global shader variable — accessed directly in shader
+        //registrationMaterial.SetVector("_SensorResolution", intrinsics.SensorResolution);
+        registrationMaterial.SetVector("_SensorResolution", new Vector4(intrinsics.SensorResolution.x, intrinsics.SensorResolution.y, 0, 0));
 
+
+        Debug.Log($"++++++++++++++++zParams: {zParams}");
+        Debug.Log($"++++++++++++++++reprojMatrix row0: {reproj.GetRow(0)}");
+        Debug.Log($"++++++++++++++++reprojMatrix row1: {reproj.GetRow(1)}");
+        Debug.Log($"++++++++++++++++reprojMatrix row2: {reproj.GetRow(2)}");
+        Debug.Log($"++++++++++++++++reprojMatrix row3: {reproj.GetRow(3)}");
         // Output at RGB camera resolution (matches the saved PNG dimensions)
         int w = target.width;
         int h = target.height;
         RenderTexture rt = new RenderTexture(w, h, 0, RenderTextureFormat.RFloat);
         rt.Create();
 
-        Graphics.Blit(depthTexArray, rt, registrationMaterial);
+        Graphics.Blit(depthTexArray, rt, registrationMaterial); //registrationMaterial
 
         Texture2D tex = new Texture2D(w, h, TextureFormat.RFloat, false);
         RenderTexture.active = rt;
@@ -154,7 +166,7 @@ public class KeyFrameManager : MonoBehaviour
         return tex;
     }
 
-    void SaveKeyframeToDisk(Keyframe kf, int index)
+    void SaveKeyframeToDisk(CapturedKeyframe kf, int index)
     {
         string dir = $"{Application.persistentDataPath}/keyframes/{index}";
         System.IO.Directory.CreateDirectory(dir);
@@ -170,6 +182,10 @@ public class KeyFrameManager : MonoBehaviour
         // Registered Depth (metric, pixel-aligned with LeftRGB)
         byte[] depthBytes = kf.depth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
+
+        byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
+        System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
+
 
         // Pose
         string pose = JsonUtility.ToJson(new PoseData
@@ -231,7 +247,7 @@ public class KeyFrameManager : MonoBehaviour
     {
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.RFloat);
         rt.Create();
-        Graphics.Blit(depthTexArray, rt, depthMaterial);
+        Graphics.Blit(depthTexArray, rt, registrationMaterial);
 
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RFloat, false);
         RenderTexture.active = rt;
@@ -245,11 +261,12 @@ public class KeyFrameManager : MonoBehaviour
 }
 
 [System.Serializable]
-public struct Keyframe
+public struct CapturedKeyframe
 {
     public Texture2D rgb;
     public Texture2D rgbRight;
     public Texture2D depth;
+    public Texture2D rawDepth;
     public Vector3 position;
     public Quaternion rotation;
     public System.DateTime timestamp;
