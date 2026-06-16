@@ -4,7 +4,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
-using System.Collections.Generic;
 using Meta.XR.EnvironmentDepth;
 using Unity.XR.Oculus;
 
@@ -24,7 +23,7 @@ public class KeyFrameManager : MonoBehaviour
     private RenderTexture target;
     private RenderTexture rightTarget;
 
-    private List<Keyframe> keyframes = new List<Keyframe>();
+    private int _keyframeCount = 0;
 
     void Start()
     {
@@ -111,10 +110,14 @@ public class KeyFrameManager : MonoBehaviour
             depthResolution = new Vector2(depthTex.width, depthTex.height)
         };
 
-        keyframes.Add(kf);
-        SaveKeyframeToDisk(kf, keyframes.Count - 1);
+        SaveKeyframeToDisk(kf, _keyframeCount++);
 
-        Debug.Log($"Keyframe captured: {keyframes.Count} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
+        // Destroy textures immediately — they are on disk, no reason to keep them in RAM.
+        Destroy(kf.rgb);
+        Destroy(kf.rgbRight);
+        Destroy(kf.depth);
+
+        Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
     }
 
     /// <summary>
