@@ -192,6 +192,35 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
+--- !u!1 &31397260
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 31397263}
+  - component: {fileID: 31397261}
+  m_Layer: 0
+  m_Name: ShaderStripper
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &31397261
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 31397260}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5114847cd5fecf542ac05e748e49b3fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!114 &31397262 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 7564955763330587025, guid: 0e9e59a9b5566489fad35afecaeac3a9, type: 3}
@@ -203,6 +232,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!4 &31397263
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 31397260}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.07399, y: 0.41222, z: 2.13632}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &78389261
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1589,6 +1633,7 @@ MonoBehaviour:
   passthroughCameraLeft: {fileID: 1748868315344937867}
   passthroughCameraRight: {fileID: 964992456}
   depthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
+  registrationMaterial: {fileID: 2100000, guid: c2a019f7c15df09459738b2fedea4e10, type: 2}
 --- !u!4 &2039053024
 Transform:
   m_ObjectHideFlags: 0
@@ -1834,3 +1879,4 @@ SceneRoots:
   - {fileID: 265572304}
   - {fileID: 689678563}
   - {fileID: 2039053024}
+  - {fileID: 31397263}

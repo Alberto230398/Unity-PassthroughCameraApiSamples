@@ -777,6 +777,7 @@ PlayerSettings:
     Android: 0
   il2cppStacktraceInformation: {}
   managedStrippingLevel:
+    Android: 3
     EmbeddedLinux: 1
     GameCoreScarlett: 1
     GameCoreXboxOne: 1
