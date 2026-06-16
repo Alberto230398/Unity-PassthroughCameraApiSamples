@@ -87,6 +87,7 @@ public class KeyFrameManager : MonoBehaviour
         Matrix4x4 proj = Matrix4x4.identity;
 
         var matr = leftCamera.projectionMatrix;
+        var cam2worldMatr = leftCamera.cameraToWorldMatrix;
 
         if (reproj != null && reproj.Length > 0)
         {
