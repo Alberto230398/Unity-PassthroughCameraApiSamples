@@ -91,20 +91,20 @@ public class KeyFrameManager : MonoBehaviour
         // Save registered depth (reprojected into RGB camera space)
         var intrinsics = passthroughCameraLeft.Intrinsics;
 
-        Texture2D depth = SaveRegisteredDepthFrame(
+        /*Texture2D depth = SaveRegisteredDepthFrame(
             depthTex,
             pose,
             intrinsics,
             reprojMatrix,
             zParams
-        );
+        );*/
 
         var rgbMatrix = leftCamera.projectionMatrix;
 
         var kf = new CapturedKeyframe
         {
             rgb = rgb,
-            depth = depth,
+            //depth = depth,
             rgbRight = rgbRight,
             rawDepth = rawDepth,
             position = pose.position,
@@ -121,7 +121,7 @@ public class KeyFrameManager : MonoBehaviour
         // Destroy textures immediately — they are on disk, no reason to keep them in RAM.
         Destroy(kf.rgb);
         Destroy(kf.rgbRight);
-        Destroy(kf.depth);
+        //Destroy(kf.depth);
 
         Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
     }
@@ -133,14 +133,28 @@ public class KeyFrameManager : MonoBehaviour
     Texture2D SaveRegisteredDepthFrame(Texture depthTexArray, Pose rgbPose,
         PassthroughCameraAccess.CameraIntrinsics intrinsics, Matrix4x4 reproj, Vector4 zParams)
     {
+        // Compute crop region matching SDK's CalcSensorCropRegion():
+        //   camera runs at target resolution (e.g. 1280×960) on a square sensor (1280×1280),
+        //   so the sensor is cropped by 160px top and bottom → cropY=160, cropH=960.
+        var sensorRes = (Vector2)intrinsics.SensorResolution;
+        var currRes = new Vector2(target.width, target.height);
+        var scale = new Vector2(currRes.x / sensorRes.x, currRes.y / sensorRes.y);
+        scale /= Mathf.Max(scale.x, scale.y);
+        var cropRegion = new Vector4(
+            sensorRes.x * (1f - scale.x) * 0.5f,  // cropX
+            sensorRes.y * (1f - scale.y) * 0.5f,  // cropY
+            sensorRes.x * scale.x,                  // cropWidth
+            sensorRes.y * scale.y                    // cropHeight
+        );
+
         // Set registration shader uniforms
         registrationMaterial.SetMatrix("_ReprojMatrix", reproj);
         registrationMaterial.SetVector("_RGBPosition", rgbPose.position);
         registrationMaterial.SetMatrix("_RGBRotation", Matrix4x4.Rotate(rgbPose.rotation));
         registrationMaterial.SetVector("_FocalLength", intrinsics.FocalLength);
         registrationMaterial.SetVector("_PrincipalPoint", intrinsics.PrincipalPoint);
-        //registrationMaterial.SetVector("_SensorResolution", intrinsics.SensorResolution);
-        registrationMaterial.SetVector("_SensorResolution", new Vector4(intrinsics.SensorResolution.x, intrinsics.SensorResolution.y, 0, 0));
+        registrationMaterial.SetVector("_SensorResolution", new Vector4(sensorRes.x, sensorRes.y, 0, 0));
+        registrationMaterial.SetVector("_CropRegion", cropRegion);
 
 
         Debug.Log($"++++++++++++++++zParams: {zParams}");
@@ -180,8 +194,8 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllBytes($"{dir}/RightRGB.png", rgbRightBytes);
 
         // Registered Depth (metric, pixel-aligned with LeftRGB)
-        byte[] depthBytes = kf.depth.EncodeToEXR();
-        System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
+        /*byte[] depthBytes = kf.depth.EncodeToEXR();
+        System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);*/
 
         byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
@@ -247,7 +261,7 @@ public class KeyFrameManager : MonoBehaviour
     {
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.RFloat);
         rt.Create();
-        Graphics.Blit(depthTexArray, rt, registrationMaterial);
+        Graphics.Blit(depthTexArray, rt, depthMaterial);
 
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RFloat, false);
         RenderTexture.active = rt;
@@ -265,7 +279,7 @@ public struct CapturedKeyframe
 {
     public Texture2D rgb;
     public Texture2D rgbRight;
-    public Texture2D depth;
+    //public Texture2D depth;
     public Texture2D rawDepth;
     public Vector3 position;
     public Quaternion rotation;

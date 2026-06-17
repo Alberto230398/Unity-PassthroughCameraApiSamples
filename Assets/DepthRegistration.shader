@@ -140,6 +140,9 @@ Shader "Custom/DepthRegistration"
             float2 _FocalLength;
             float2 _PrincipalPoint;
             float2 _SensorResolution;
+            // Crop region in sensor pixels: (cropX, cropY, cropWidth, cropHeight)
+            // Derived from SDK's CalcSensorCropRegion: maps image UV → sensor coords
+            float4 _CropRegion;
             float4 _EnvironmentDepthZBufferParams;
 
             // Meta's formula from EnvironmentOcclusion.cginc:
@@ -152,10 +155,11 @@ Shader "Custom/DepthRegistration"
 
             float frag(v2f_img i) : SV_Target
             {
-                // Sensor coords: SDK uses Y-up convention (sensor.y=0 at bottom, sensor.y=H at top)
-                // i.uv.y=0 is bottom of screen → sensor.y=0; i.uv.y=1 is top → sensor.y=H
-                float2 sensor = float2(i.uv.x * _SensorResolution.x,
-                                       i.uv.y * _SensorResolution.y);
+                // Map image UV → sensor pixel coords using crop region.
+                // Camera runs at 1280×960 on a 1280×1280 sensor: cropY=160, cropH=960.
+                // Without this, sensor.y would span [0,1280] instead of [160,1120].
+                float2 sensor = float2(_CropRegion.x + i.uv.x * _CropRegion.z,
+                                       _CropRegion.y + i.uv.y * _CropRegion.w);
 
                 // Unproject to camera-space ray — no Y-negation (sensor Y is already up)
                 float3 d_cam = float3(
