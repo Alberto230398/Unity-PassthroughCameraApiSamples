@@ -199,8 +199,8 @@ public class KeyFrameManager : MonoBehaviour
         byte[] depthBytes = kf.depth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
 
-        byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
-        System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
+        //byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
+        //System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
 
 
         // Pose
@@ -265,7 +265,7 @@ public class KeyFrameManager : MonoBehaviour
     {
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.RFloat);
         rt.Create();
-        Graphics.Blit(depthTexArray, rt, depthMaterial);
+        Graphics.Blit(depthTexArray, rt);
 
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RFloat, false);
         RenderTexture.active = rt;

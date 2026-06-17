@@ -31,13 +31,13 @@ Shader "Custom/DepthRegistration"
             float4 _CropRegion;
             float4 _EnvironmentDepthZBufferParams;
 
-            // linZ = x / (rawDepth + y)  — zParams=(-0.20,-1.00,0,0) → 0.20/(1-raw)
-            // No NDC conversion: Quest/Vulkan depth buffer is [0,1], not [-1,1].
-            // z/w are 0 so the z*raw+w form used elsewhere is unusable here.
+            // Reversed-Z infinite projection: z_eye = near / rawDepth
+            // zParams=(-0.20,-1.00,0,0) → x/(y*raw) = -0.20/(-1.0*raw) = 0.20/raw
+            // rawDepth=1 → z_eye=0.20m (near plane), rawDepth→0 → z_eye→∞ (far)
             float LinearizeDepth(float rawDepth)
             {
                 return _EnvironmentDepthZBufferParams.x /
-                       (rawDepth + _EnvironmentDepthZBufferParams.y);
+                       (_EnvironmentDepthZBufferParams.y * rawDepth);
             }
 
             float frag(v2f_img i) : SV_Target
@@ -63,13 +63,14 @@ Shader "Custom/DepthRegistration"
                 float4 A = mul(_ReprojMatrix, float4(_RGBPosition, 1.0));
                 float4 B = mul(_ReprojMatrix, float4(d_world, 0.0));
 
-                // Precompute for analytical t-solve from sampled linearDepth:
-                // linearDepth = x * (A.w + t*B.w) / ((A.z + y*A.w) + t*(B.z + y*B.w))
-                // → t = (x*A.w - linZ*P) / (linZ*Q - x*B.w)
+                // Analytical t-solve for linZ = (zx/zy) * (A.w+t*B.w)/(A.z+t*B.z)
+                // → linZ*zy*(A.z+t*B.z) = zx*(A.w+t*B.w)
+                // → t = (zx*A.w - linZ*P) / (linZ*Q - zx*B.w)
+                // where P = zy*A.z, Q = zy*B.z
                 float zx = _EnvironmentDepthZBufferParams.x;
                 float zy = _EnvironmentDepthZBufferParams.y;
-                float P = A.z + zy * A.w;
-                float Q = B.z + zy * B.w;
+                float P = zy * A.z;
+                float Q = zy * B.z;
 
                 float t = 1.0; // initial guess: 1 meter
 
