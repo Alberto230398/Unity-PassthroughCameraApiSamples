@@ -27,7 +27,7 @@ EditorBuildSettings:
     path: Assets/Scenes/2. 3D Reconstruction.unity
     guid: e7296154cd27ccb4ca0c355c53c52486
   m_configObjects:
-    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: f2bf97b3acdb64248a707c407c9fc54e, type: 2}
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 65d06a05ca9c80c47bd32a294a4c1038, type: 2}
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 2c739ecc48105f04b82d19386db0b8d9, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: a971eac5e950046e586c5e153e32d05c, type: 2}

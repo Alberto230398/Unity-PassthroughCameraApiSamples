@@ -3,6 +3,7 @@ using Meta.XR.EnvironmentDepth;
 using Unity.XR.Oculus;
 using UnityEngine;
 using UnityEngine.UI;
+using static Unity.XR.Oculus.Utils;
 
 public class GetDepthMaps : MonoBehaviour
 {
@@ -48,5 +49,16 @@ public class GetDepthMaps : MonoBehaviour
         }
 
         Graphics.Blit(depthTex, _previewRT, depthMaterial);
+    }
+
+    private void RetrieveDepthData()
+    {
+        //Utils.SetupEnvironmentDepth(EnvironmentDepthCreateParams createParams)
+        //Utils.ShutdownEnvironmentDepth()
+
+        var data = Utils.GetEnvironmentDepthFrameDesc(0);
+
+        Debug.Log("FOV Data: " + data.fovDownAngle + " " + data.fovLeftAngle + " " + data.fovRightAngle);
+
     }
 }

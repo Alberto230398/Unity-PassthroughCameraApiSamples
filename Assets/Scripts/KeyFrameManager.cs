@@ -6,6 +6,7 @@ using UnityEngine.Rendering;
 using UnityEngine.UI;
 using Meta.XR.EnvironmentDepth;
 using Unity.XR.Oculus;
+using static Unity.XR.Oculus.Utils;
 
 public class KeyFrameManager : MonoBehaviour
 {
@@ -91,20 +92,20 @@ public class KeyFrameManager : MonoBehaviour
         // Save registered depth (reprojected into RGB camera space)
         var intrinsics = passthroughCameraLeft.Intrinsics;
 
-        /*Texture2D depth = SaveRegisteredDepthFrame(
+        Texture2D depth = SaveRegisteredDepthFrame(
             depthTex,
             pose,
             intrinsics,
             reprojMatrix,
             zParams
-        );*/
+        );
 
         var rgbMatrix = leftCamera.projectionMatrix;
 
         var kf = new CapturedKeyframe
         {
             rgb = rgb,
-            //depth = depth,
+            depth = depth,
             rgbRight = rgbRight,
             rawDepth = rawDepth,
             position = pose.position,
@@ -113,7 +114,8 @@ public class KeyFrameManager : MonoBehaviour
             intrinsics = intrinsics,
             reprojectionMatrix = reprojMatrix,
             zBufferParams = zParams,
-            depthResolution = new Vector2(depthTex.width, depthTex.height)
+            depthResolution = new Vector2(depthTex.width, depthTex.height),
+            depthData = Utils.GetEnvironmentDepthFrameDesc(0)
         };
 
         SaveKeyframeToDisk(kf, _keyframeCount++);
@@ -121,7 +123,7 @@ public class KeyFrameManager : MonoBehaviour
         // Destroy textures immediately — they are on disk, no reason to keep them in RAM.
         Destroy(kf.rgb);
         Destroy(kf.rgbRight);
-        //Destroy(kf.depth);
+        Destroy(kf.depth);
 
         Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
     }
@@ -194,8 +196,8 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllBytes($"{dir}/RightRGB.png", rgbRightBytes);
 
         // Registered Depth (metric, pixel-aligned with LeftRGB)
-        /*byte[] depthBytes = kf.depth.EncodeToEXR();
-        System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);*/
+        byte[] depthBytes = kf.depth.EncodeToEXR();
+        System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
 
         byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
@@ -233,7 +235,9 @@ public class KeyFrameManager : MonoBehaviour
         string depthMeta = JsonUtility.ToJson(new DepthMetaData
         {
             width = kf.depthResolution.x,
-            height = kf.depthResolution.y
+            height = kf.depthResolution.y,
+            FOVleft = kf.depthData.fovLeftAngle,
+            FOVright = kf.depthData.fovRightAngle
         });
 
         System.IO.File.WriteAllText($"{dir}/pose.json", pose);
@@ -279,7 +283,7 @@ public struct CapturedKeyframe
 {
     public Texture2D rgb;
     public Texture2D rgbRight;
-    //public Texture2D depth;
+    public Texture2D depth;
     public Texture2D rawDepth;
     public Vector3 position;
     public Quaternion rotation;
@@ -288,6 +292,7 @@ public struct CapturedKeyframe
     public Matrix4x4 reprojectionMatrix;
     public Vector4 zBufferParams;
     public Vector2 depthResolution;
+    public EnvironmentDepthFrameDesc depthData;
 }
 
 [System.Serializable]
@@ -316,4 +321,5 @@ struct ZBufferParamsData
 struct DepthMetaData
 {
     public float width, height;
+    public float FOVleft, FOVright;
 }
