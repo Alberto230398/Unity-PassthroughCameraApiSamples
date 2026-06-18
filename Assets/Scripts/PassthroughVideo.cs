@@ -26,25 +26,37 @@ public class PassthroughVideo : MonoBehaviour, VideoInterface
 
     public RenderTexture initVideo(RenderTexture target)
     {
-        StartCoroutine(BlitPassthroughStereo(target));
+        blitCoroutine = StartCoroutine(BlitPassthroughStereo(target));
         return target;
     }
 
     private IEnumerator BlitPassthroughStereo(RenderTexture target)
     {
-        _blitMat = Instantiate(sideBySideMat); // istanza privata
+        if (_blitMat != null) Destroy(_blitMat);
+        _blitMat = Instantiate(sideBySideMat);
 
         while (true)
         {
-            if (passthroughCameraLeft.IsPlaying && passthroughCameraRight.IsPlaying)
+            if (useStereoPassthrough)
             {
-                Texture left = passthroughCameraLeft.GetTexture();
-                Texture right = passthroughCameraRight.GetTexture();
-
-                if (left != null && right != null)
+                if (passthroughCameraLeft.IsPlaying && passthroughCameraRight.IsPlaying)
                 {
-                    _blitMat.SetTexture("_RightTex", right);
-                    Graphics.Blit(left, target, _blitMat);
+                    Texture left = passthroughCameraLeft.GetTexture();
+                    Texture right = passthroughCameraRight.GetTexture();
+                    if (left != null && right != null)
+                    {
+                        _blitMat.SetTexture("_RightTex", right);
+                        Graphics.Blit(left, target, _blitMat);
+                    }
+                }
+            }
+            else
+            {
+                if (passthroughCameraLeft.IsPlaying)
+                {
+                    Texture left = passthroughCameraLeft.GetTexture();
+                    if (left != null)
+                        Graphics.Blit(left, target);
                 }
             }
             yield return null;

@@ -17,23 +17,34 @@ public class VideoManager : MonoBehaviour
 
     RenderTexture camRenderTexture;
     VideoInterface currentSource;
+    WebRTCConnection _webRTCConnection;
 
     void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
     void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
 
     bool videoActive;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    void Awake()
+    {
+        _webRTCConnection = GetComponentInParent<WebRTCConnection>() ?? FindAnyObjectByType<WebRTCConnection>();
+    }
+
     void Start()
     {
 
     }
 
-    // Update is called once per frame
     void Update()
     {
         if (OVRInput.GetDown(OVRInput.Button.Two) && currentSource != null)
             SwitchSource((activeSourceIndex + 1) % sources.Length);
+
+        if (OVRInput.GetDown(OVRInput.Button.One))
+        {
+            _webRTCConnection ??= FindAnyObjectByType<WebRTCConnection>();
+            _webRTCConnection?.StartVideoTransmission();
+            Debug.Log("[VideoManager] Button A → StartVideoTransmission");
+        }
     }
 
     // VideoManager

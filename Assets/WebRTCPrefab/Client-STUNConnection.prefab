@@ -152,7 +152,7 @@ MonoBehaviour:
   WebSocketConnectionChanged:
     m_PersistentCalls:
       m_Calls: []
-  WebRTCConnectionActive: 1
+  WebRTCConnectionActive: 0
   WebRTCConnected:
     m_PersistentCalls:
       m_Calls: []
