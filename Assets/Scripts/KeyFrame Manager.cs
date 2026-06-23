@@ -31,26 +31,31 @@ public class KeyFrameManager : MonoBehaviour
 
 
     void SaveKeyFrame()
-{
+    {
 
-    Debug.Log("Saving Keyframe...");
-    string dir = $"{Application.persistentDataPath}/keyframes/";
-    //string dir = "/Users/albertomerletti/Desktop/keyframes/";
-    System.IO.Directory.CreateDirectory(dir);
+        Debug.Log("Saving Keyframe...");
+        string dir = $"{Application.persistentDataPath}/keyframes/";
+        //string dir = "/Users/albertomerletti/Desktop/keyframes/";
+        System.IO.Directory.CreateDirectory(dir);
 
-    renderCamera.Render();
-    blendedRawImage.texture = blendedTexture;
+        renderCamera.Render();
+        blendedRawImage.texture = blendedTexture;
 
-    // 2. Poi imposta l'active per la lettura
-    Texture2D blendedTexture2D = new Texture2D(blendedTexture.width, blendedTexture.height, TextureFormat.RGBA32, false);
-    RenderTexture.active = blendedTexture;
-    blendedTexture2D.ReadPixels(new Rect(0, 0, blendedTexture.width, blendedTexture.height), 0, 0);
-    blendedTexture2D.Apply();
+        // 2. Poi imposta l'active per la lettura
+        Texture2D blendedTexture2D = new Texture2D(blendedTexture.width, blendedTexture.height, TextureFormat.RGBA32, false);
+        RenderTexture.active = blendedTexture;
+        blendedTexture2D.ReadPixels(new Rect(0, 0, blendedTexture.width, blendedTexture.height), 0, 0);
+        blendedTexture2D.Apply();
 
-    // 3. Ripristina sempre l'active (importante!)
-    RenderTexture.active = null;
+        // 3. Ripristina sempre l'active (importante!)
+        RenderTexture.active = null;
 
-    byte[] bytes = blendedTexture2D.EncodeToPNG();
-    System.IO.File.WriteAllBytes($"{dir}/KeyFrame_{System.DateTime.Now:yyyyMMdd_HHmmss}.png", bytes);
-}
+        byte[] bytes = blendedTexture2D.EncodeToPNG();
+        //System.IO.File.WriteAllBytes($"{dir}/KeyFrame_{System.DateTime.Now:yyyyMMdd_HHmmss}.png", bytes);
+    }
+
+    public RenderTexture GetCompositeRT()
+    {
+        return blendedTexture;
+    }
 }

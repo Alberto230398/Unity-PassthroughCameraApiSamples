@@ -1,4 +1,4 @@
-using System.Collections;
+ using System.Collections;
 using System.Linq;
 using Meta.XR;
 using SimpleWebRTC;
@@ -19,8 +19,8 @@ public class VideoManager : MonoBehaviour
     VideoInterface currentSource;
     WebRTCConnection _webRTCConnection;
 
-    //void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
-    //void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
+    void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
+    void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
 
     bool videoActive;
 
