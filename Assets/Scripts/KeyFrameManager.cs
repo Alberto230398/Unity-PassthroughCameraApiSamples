@@ -7,6 +7,7 @@ using UnityEngine.UI;
 using Meta.XR.EnvironmentDepth;
 using Unity.XR.Oculus;
 using static Unity.XR.Oculus.Utils;
+using System.Runtime.CompilerServices;
 
 public class KeyFrameManager : MonoBehaviour
 {
@@ -103,6 +104,8 @@ public class KeyFrameManager : MonoBehaviour
 
         var rgbMatrix = leftCamera.projectionMatrix;
 
+        var RightPose = passthroughCameraRight.GetCameraPose();
+
         var kf = new CapturedKeyframe
         {
             rgb = rgb,
@@ -111,6 +114,8 @@ public class KeyFrameManager : MonoBehaviour
             rawDepth = rawDepth,
             position = pose.position,
             rotation = pose.rotation,
+            RightCamPosition = rightPose.position,
+            RightCamRotation = rightPose.rotation,
             timestamp = passthroughCameraLeft.Timestamp,
             intrinsics = intrinsics,
             rightIntrinsics = rightIntrinsics,
@@ -213,6 +218,13 @@ public class KeyFrameManager : MonoBehaviour
             timestamp = kf.timestamp.ToString("HH:mm:ss:fff")
         });
 
+        string rightPose = JsonUtility.ToJson(new PoseData
+        {
+            px = kf.RightCamPosition.x, py = kf.RightCamPosition.y, pz = kf.RightCamPosition.z,
+            rx = kf.RightCamRotation.x, ry = kf.RightCamRotation.y, rz = kf.RightCamRotation.z, rw = kf.RightCamRotation.w,
+            timestamp = kf.timestamp.ToString("HH:mm:ss:fff")
+        });
+
         // RGB Intrinsics
         string RGBIntrinsics = JsonUtility.ToJson(new IntrinsicsData
         {
@@ -225,7 +237,7 @@ public class KeyFrameManager : MonoBehaviour
         {
             FocalLength = kf.rightIntrinsics.FocalLength,
             PrincipalPoint = kf.rightIntrinsics.PrincipalPoint,
-            SensorResolution = kf.intrinsics.SensorResolution
+            SensorResolution = kf.rightIntrinsics.SensorResolution
         });
 
         // Reprojection Matrix
@@ -249,9 +261,19 @@ public class KeyFrameManager : MonoBehaviour
             FOVright = kf.depthData.fovRightAngle
         });
 
-        System.IO.File.WriteAllText($"{dir}/CamPose.json", pose);
+        var LeftPose = passthroughCameraLeft.GetCameraPose();
+        var rightCamPose = passthroughCameraRight.GetCameraPose();
+
+        float CamDistance = Vector3.Distance(LeftPose.position, rightCamPose.position);
+
+        System.IO.File.WriteAllText($"{dir}/LeftCamPose.json", pose);
+        System.IO.File.WriteAllText($"{dir}/RightCamPose.json", rightPose);
         System.IO.File.WriteAllText($"{dir}/LeftIntrinsics.json", RGBIntrinsics);
         System.IO.File.WriteAllText($"{dir}/RightIntrinsics.json", RGBRightInstrinsics);
+        
+        System.IO.File.WriteAllText($"{dir}/PassthroughCamDistance.txt",
+    CamDistance.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
         //System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
         //System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
         //System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
@@ -295,8 +317,11 @@ public struct CapturedKeyframe
     public Texture2D rgbRight;
     public Texture2D depth;
     public Texture2D rawDepth;
+    public float CamDistance;
     public Vector3 position;
+    public Vector3 RightCamPosition;
     public Quaternion rotation;
+    public Quaternion RightCamRotation;
     public System.DateTime timestamp;
     public PassthroughCameraAccess.CameraIntrinsics intrinsics;
     public PassthroughCameraAccess.CameraIntrinsics rightIntrinsics;

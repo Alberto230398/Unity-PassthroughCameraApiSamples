@@ -137,7 +137,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: RequestedResolution.y
-      value: 720
+      value: 1280
       objectReference: {fileID: 0}
     - target: {fileID: 1511011808596740564, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: m_Name
@@ -1683,7 +1683,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: RequestedResolution.y
-      value: 720
+      value: 1280
       objectReference: {fileID: 0}
     - target: {fileID: 1511011808596740564, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: m_Name
