@@ -50,7 +50,7 @@ public class VideoManager : MonoBehaviour
     // VideoManager
     public RenderTexture CreateVideo()
     {
-        camRenderTexture = new RenderTexture(1280, 960, 0, RenderTextureFormat.BGRA32);
+        camRenderTexture = new RenderTexture(1280, 1280, 0, RenderTextureFormat.BGRA32);
         camRenderTexture.Create();
         SwitchSource(activeSourceIndex);
         return camRenderTexture;
