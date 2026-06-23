@@ -91,6 +91,7 @@ public class KeyFrameManager : MonoBehaviour
 
         // Save registered depth (reprojected into RGB camera space)
         var intrinsics = passthroughCameraLeft.Intrinsics;
+        var rightIntrinsics = passthroughCameraRight.Intrinsics;
 
         Texture2D depth = SaveRegisteredDepthFrame(
             depthTex,
@@ -112,6 +113,7 @@ public class KeyFrameManager : MonoBehaviour
             rotation = pose.rotation,
             timestamp = passthroughCameraLeft.Timestamp,
             intrinsics = intrinsics,
+            rightIntrinsics = rightIntrinsics,
             reprojectionMatrix = reprojMatrix,
             zBufferParams = zParams,
             depthResolution = new Vector2(depthTex.width, depthTex.height),
@@ -197,9 +199,9 @@ public class KeyFrameManager : MonoBehaviour
 
         // Registered Depth (metric, pixel-aligned with LeftRGB)
         byte[] depthBytes = kf.depth.EncodeToEXR();
-        System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
+        //System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
 
-        //byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
+        byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
         //System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
 
 
@@ -216,6 +218,13 @@ public class KeyFrameManager : MonoBehaviour
         {
             FocalLength = kf.intrinsics.FocalLength,
             PrincipalPoint = kf.intrinsics.PrincipalPoint,
+            SensorResolution = kf.intrinsics.SensorResolution
+        });
+
+        string RGBRightInstrinsics = JsonUtility.ToJson(new IntrinsicsData
+        {
+            FocalLength = kf.rightIntrinsics.FocalLength,
+            PrincipalPoint = kf.rightIntrinsics.PrincipalPoint,
             SensorResolution = kf.intrinsics.SensorResolution
         });
 
@@ -240,11 +249,12 @@ public class KeyFrameManager : MonoBehaviour
             FOVright = kf.depthData.fovRightAngle
         });
 
-        System.IO.File.WriteAllText($"{dir}/pose.json", pose);
-        System.IO.File.WriteAllText($"{dir}/intrinsics.json", RGBIntrinsics);
-        System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
-        System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
-        System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
+        System.IO.File.WriteAllText($"{dir}/CamPose.json", pose);
+        System.IO.File.WriteAllText($"{dir}/LeftIntrinsics.json", RGBIntrinsics);
+        System.IO.File.WriteAllText($"{dir}/RightIntrinsics.json", RGBRightInstrinsics);
+        //System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
+        //System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
+        //System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
     }
 
     Texture2D SaveFrame(RenderTexture rt)
@@ -289,6 +299,7 @@ public struct CapturedKeyframe
     public Quaternion rotation;
     public System.DateTime timestamp;
     public PassthroughCameraAccess.CameraIntrinsics intrinsics;
+    public PassthroughCameraAccess.CameraIntrinsics rightIntrinsics;
     public Matrix4x4 reprojectionMatrix;
     public Vector4 zBufferParams;
     public Vector2 depthResolution;
