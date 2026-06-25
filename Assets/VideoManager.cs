@@ -50,10 +50,26 @@ public class VideoManager : MonoBehaviour
     // VideoManager
     public RenderTexture CreateVideo()
     {
-        camRenderTexture = new RenderTexture(1280, 1280, 0, RenderTextureFormat.BGRA32);
-        camRenderTexture.Create();
+        // Riusa la stessa RenderTexture tra le riconnessioni: riallocarla ogni volta
+        // senza Release() perdeva ~6.5MB di VRAM ad ogni StartVideoTransmission.
+        if (camRenderTexture == null)
+        {
+            camRenderTexture = new RenderTexture(1280, 1280, 0, RenderTextureFormat.BGRA32);
+            camRenderTexture.Create();
+        }
         SwitchSource(activeSourceIndex);
         return camRenderTexture;
+    }
+
+    void OnDestroy()
+    {
+        currentSource?.stop();
+        if (camRenderTexture != null)
+        {
+            camRenderTexture.Release();
+            Destroy(camRenderTexture);
+            camRenderTexture = null;
+        }
     }
 
     void SwitchSource(int index)
