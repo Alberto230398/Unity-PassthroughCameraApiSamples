@@ -79,7 +79,8 @@ def parse_unity_matrix4x4(data):
     ], dtype=np.float64)
 
 
-def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
+def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=8.0, edge_thresh=0.05,
+                            border=6, max_grazing_deg=80.0):
     """
     Direct 3D unprojection: raw depth -> world points -> RGB color lookup.
     No iterative shader registration needed.
@@ -157,12 +158,51 @@ def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
 
     valid = (raw_flat > 0.001) & (linear_z > min_depth) & (linear_z < max_depth)
 
+    # Depth-discontinuity (edge) filter: drop "flying pixels" at depth jumps.
+    # A pixel straddling a foreground/background edge linearizes to a mid value and
+    # unprojects to a point floating in mid-air along the ray ("comet tails").
+    # Reject a pixel if its linear depth differs from a 4-neighbour by more than
+    # edge_thresh (relative). edge_thresh<=0 disables the filter.
+    if edge_thresh and edge_thresh > 0:
+        lz = linear_z.reshape(H_d, W_d)
+        lz_safe = np.where(np.isfinite(lz), lz, 0.0)
+        jump = np.zeros((H_d, W_d), dtype=np.float64)
+        for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            shifted = np.roll(lz_safe, (di, dj), axis=(0, 1))
+            jump = np.maximum(jump, np.abs(lz_safe - shifted))
+        edge_ok = (jump < edge_thresh * lz_safe).ravel()
+        valid &= edge_ok
+
+    # Border crop: the outermost depth pixels are unreliable (wide depth FOV,
+    # extrapolated edges) and produce the draping "curtains" at grazing angles.
+    if border and border > 0:
+        bmask = np.zeros((H_d, W_d), dtype=bool)
+        bmask[border:H_d - border, border:W_d - border] = True
+        valid &= bmask.ravel()
+
     # Unproject the full NDC point through inv(M)
     ones = np.ones(N, dtype=np.float64)
     clip = np.stack([ndc_x, ndc_y, ndc_z, ones], axis=0)   # 4xN
     world_h = inv_M @ clip                                   # 4xN
     valid &= np.abs(world_h[3]) > 1e-9
-    world_pts = (world_h[:3] / world_h[3:4]).T              # Nx3
+    with np.errstate(divide='ignore', invalid='ignore'):
+        world_pts = (world_h[:3] / world_h[3:4]).T          # Nx3
+
+    # Grazing-angle filter: surfaces seen nearly edge-on (walls/floor viewed along
+    # their plane) "stretch" into dense sheets/skirts that survive the voxel filter.
+    # Estimate each pixel's surface normal from its 3D neighbours and drop points
+    # whose normal is more than max_grazing_deg away from the viewing ray.
+    if max_grazing_deg and max_grazing_deg < 90:
+        Wp = world_pts.reshape(H_d, W_d, 3)
+        tx = np.zeros_like(Wp); tx[:, :-1] = Wp[:, 1:] - Wp[:, :-1]
+        ty = np.zeros_like(Wp); ty[:-1] = Wp[1:] - Wp[:-1]
+        nrm = np.cross(tx, ty)
+        nrm /= (np.linalg.norm(nrm, axis=2, keepdims=True) + 1e-12)
+        ray = Wp - rgb_pos
+        ray /= (np.linalg.norm(ray, axis=2, keepdims=True) + 1e-12)
+        cosang = np.abs(np.sum(nrm * ray, axis=2))          # 1=facing, 0=edge-on
+        graze_ok = (cosang > np.cos(np.radians(max_grazing_deg))).ravel()
+        valid &= np.nan_to_num(graze_ok.astype(float), nan=0.0).astype(bool)
     world_pts = world_pts[valid]
 
     # --- Project into RGB camera ---
@@ -255,6 +295,29 @@ def process_keyframe(keyframe_dir, min_depth=0.1, max_depth=15.0):
 
     P_world = (R @ P_cam.T).T + pos
     return P_world.astype(np.float32), colors.astype(np.uint8)
+
+
+def voxel_downsample(points, colors, voxel=0.02, min_pts=2):
+    """Average points/colors into a voxel grid; drop voxels with < min_pts points.
+
+    Merges redundant overlapping samples from many keyframes (removes "doubled"
+    surfaces) and removes sparse floating noise / depth-edge curtains, which land
+    in voxels hit by very few points.
+    """
+    if len(points) == 0 or voxel <= 0:
+        return points, colors
+    keys = np.floor(points / voxel).astype(np.int64)
+    order = np.lexsort((keys[:, 2], keys[:, 1], keys[:, 0]))
+    ks, ps, cs = keys[order], points[order], colors[order].astype(np.float64)
+    new_group = np.empty(len(ks), dtype=bool)
+    new_group[0] = True
+    np.any(ks[1:] != ks[:-1], axis=1, out=new_group[1:])
+    starts = np.nonzero(new_group)[0]
+    counts = np.diff(np.append(starts, len(ks)))
+    pmean = np.add.reduceat(ps, starts, axis=0) / counts[:, None]
+    cmean = np.add.reduceat(cs, starts, axis=0) / counts[:, None]
+    keep = counts >= min_pts
+    return pmean[keep].astype(np.float32), np.clip(cmean[keep], 0, 255).astype(np.uint8)
 
 
 def write_ply(output_path, all_points, all_colors):
@@ -373,18 +436,39 @@ def diag_keyframe_direct(keyframe_dir):
         print(f"  ERROR in process_keyframe_direct: {e}")
 
 
+def _pop_opt(args, name, cast, default):
+    """Extract '--name value' from args list; return (remaining_args, value)."""
+    if name in args:
+        i = args.index(name)
+        val = cast(args[i + 1])
+        del args[i:i + 2]
+        return args, val
+    return args, default
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     diag_only = '--diag' in args
     registered = '--registered' in args
-    direct = not registered  # direct is the default pipeline
     args = [a for a in args if a not in ('--diag', '--registered', '--direct')]
 
+    args, max_depth   = _pop_opt(args, '--max-depth', float, 8.0)
+    args, edge_thresh = _pop_opt(args, '--edge',      float, 0.05)
+    args, border      = _pop_opt(args, '--border',    int,   6)
+    args, grazing     = _pop_opt(args, '--grazing',   float, 80.0)
+    args, voxel       = _pop_opt(args, '--voxel',     float, 0.02)
+    args, min_pts     = _pop_opt(args, '--min-pts',   int,   2)
+
     if not args:
-        print(f"Usage: {os.path.basename(sys.argv[0])} <keyframes_root> [output.ply] [--diag] [--registered]")
-        print("  (default)     direct unprojection from rawDepth.exr")
-        print("  --registered  legacy pipeline using GPU-registered depth.exr")
-        print("  --diag        print stats for every keyframe, skip PLY generation")
+        print(f"Usage: {os.path.basename(sys.argv[0])} <keyframes_root> [output.ply] [options]")
+        print("  --diag             per-keyframe stats, skip PLY")
+        print("  --registered       legacy pipeline (depth.exr)")
+        print("  --max-depth M      cull points farther than M metres (default 8)")
+        print("  --edge T           depth-discontinuity threshold, relative (default 0.05; 0=off)")
+        print("  --border N         ignore outer N depth pixels (default 6)")
+        print("  --grazing D        drop surfaces seen >D deg edge-on (default 80; 90=off)")
+        print("  --voxel S          voxel size in metres for downsample/denoise (default 0.02; 0=off)")
+        print("  --min-pts K        drop voxels with fewer than K points (default 2)")
         sys.exit(1)
 
     root    = args[0]
@@ -414,12 +498,15 @@ if __name__ == '__main__':
                 diag_keyframe_direct(kf)
         sys.exit(0)
 
-    process = process_keyframe if registered else process_keyframe_direct
-
     all_pts, all_cols = [], []
     for kf in kf_dirs:
         try:
-            pts, cols = process(kf)
+            if registered:
+                pts, cols = process_keyframe(kf, max_depth=max_depth)
+            else:
+                pts, cols = process_keyframe_direct(kf, max_depth=max_depth,
+                                                    edge_thresh=edge_thresh, border=border,
+                                                    max_grazing_deg=grazing)
             all_pts.append(pts)
             all_cols.append(cols)
             print(f"  {os.path.basename(kf):>4s}  {len(pts):>8,} points")
@@ -432,6 +519,11 @@ if __name__ == '__main__':
 
     merged_pts  = np.concatenate(all_pts,  axis=0)
     merged_cols = np.concatenate(all_cols, axis=0)
+    raw_count = len(merged_pts)
+
+    if voxel and voxel > 0:
+        merged_pts, merged_cols = voxel_downsample(merged_pts, merged_cols, voxel, min_pts)
+        print(f"\nVoxel downsample ({voxel} m, min {min_pts} pts): {raw_count:,} -> {len(merged_pts):,}")
 
     write_ply(out_ply, merged_pts, merged_cols)
     print(f"\nTotal: {len(merged_pts):,} points → {out_ply}")
