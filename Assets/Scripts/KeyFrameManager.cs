@@ -21,7 +21,12 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] PassthroughCameraAccess passthroughCameraRight;
     [SerializeField] Camera leftCamera;
     [SerializeField] Material depthMaterial;            // Legacy preview shader (DepthShader)
-    [SerializeField] Material registrationMaterial;     // DepthRegistration shader for aligned output
+    [SerializeField] Material registrationMaterial;     // DepthRegistration shader for aligned output (iterative gather)
+    [SerializeField] Material registrationMeshMaterial; // DepthRegistrationMesh shader (forward connected mesh)
+    [SerializeField] float depthNear = 0.1f;            // only used to build the z-test ndc range
+    [SerializeField] float depthFar = 8f;
+    [SerializeField] float projYSign = 1f;              // set to -1 if the forward output comes out vertically flipped
+    [SerializeField] float edgeThreshold = 0.15f;       // metric depth jump (m) that breaks a mesh quad at silhouettes
 
     private RenderTexture target;
     private RenderTexture rightTarget;
@@ -53,6 +58,8 @@ public class KeyFrameManager : MonoBehaviour
         var pose = passthroughCameraLeft.GetCameraPose();
         var rightPose = passthroughCameraRight.GetCameraPose();
         var depthTex = Shader.GetGlobalTexture("_EnvironmentDepthTexture");
+        if (depthTex != null)
+            Debug.Log($"[Depth] raw resolution = {depthTex.width}x{depthTex.height}");
 
         if (depthTex == null || !passthroughCameraLeft.IsPlaying) return;
 
@@ -102,6 +109,17 @@ public class KeyFrameManager : MonoBehaviour
             zParams
         );
 
+        // Forward mesh registration — connected triangle mesh (continuous surface,
+        // no dotted point cloud). Projects depth points into RGB space using a
+        // reprojection matrix built from the RGB intrinsics. Saved as EXR.
+        Texture2D depthMesh = SaveRegisteredDepthFrameMesh(
+            depthTex,
+            pose,
+            intrinsics,
+            reprojMatrix,
+            zParams
+        );
+
         var rgbMatrix = leftCamera.projectionMatrix;
 
         var RightPose = passthroughCameraRight.GetCameraPose();
@@ -110,6 +128,7 @@ public class KeyFrameManager : MonoBehaviour
         {
             rgb = rgb,
             depth = depth,
+            depthMesh = depthMesh,
             rgbRight = rgbRight,
             rawDepth = rawDepth,
             position = pose.position,
@@ -131,6 +150,7 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(kf.rgb);
         Destroy(kf.rgbRight);
         Destroy(kf.depth);
+        Destroy(kf.depthMesh);
 
         Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
     }
@@ -189,6 +209,80 @@ public class KeyFrameManager : MonoBehaviour
         return tex;
     }
 
+    /// <summary>
+    /// Forward depth registration with a CONNECTED TRIANGLE MESH. Renders the
+    /// depth grid as connected triangles (instead of isolated splat quads), so the
+    /// rasterizer interpolates a continuous surface (no dotted point cloud).
+    /// Output is metric depth (RGB optical-axis Z), RFloat, at RGB resolution and
+    /// pixel-aligned with the RGB image.
+    /// </summary>
+    Texture2D SaveRegisteredDepthFrameMesh(Texture depthTexArray, Pose rgbPose,
+        PassthroughCameraAccess.CameraIntrinsics intrinsics, Matrix4x4 reproj, Vector4 zParams)
+    {
+        int w = target.width, h = target.height;
+
+        // Crop region — identical derivation to SaveRegisteredDepthFrame().
+        var sensorRes = (Vector2)intrinsics.SensorResolution;
+        var scale = new Vector2(w / sensorRes.x, h / sensorRes.y);
+        scale /= Mathf.Max(scale.x, scale.y);
+        float cropX = sensorRes.x * (1f - scale.x) * 0.5f;
+        float cropY = sensorRes.y * (1f - scale.y) * 0.5f;
+        float cropW = sensorRes.x * scale.x;
+        float cropH = sensorRes.y * scale.y;
+
+        // V : world -> RGB camera (+Z forward).
+        Matrix4x4 R = Matrix4x4.Rotate(rgbPose.rotation);
+        Matrix4x4 V = R.transpose * Matrix4x4.Translate(-rgbPose.position);
+
+        // K : RGB camera -> clip, from intrinsics + crop. near/far only set the
+        // ndc_z range for the z-test; emitted depth is true metric (clip.w == z).
+        float fx = intrinsics.FocalLength.x, fy = intrinsics.FocalLength.y;
+        float cx = intrinsics.PrincipalPoint.x, cy = intrinsics.PrincipalPoint.y;
+        float A = depthFar / (depthFar - depthNear);
+        float B = -depthNear * depthFar / (depthFar - depthNear);
+
+        Matrix4x4 K = Matrix4x4.zero;
+        K.m00 = 2f * fx / cropW; K.m02 = 2f * (cx - cropX) / cropW - 1f;
+        K.m11 = projYSign * 2f * fy / cropH;
+        K.m12 = projYSign * (2f * (cy - cropY) / cropH - 1f);
+        K.m22 = A; K.m23 = B;
+        K.m32 = 1f; // w = z
+
+        Matrix4x4 M = K * V;
+
+        var mat = registrationMeshMaterial;
+        mat.SetTexture("_MainTex", depthTexArray);
+        mat.SetMatrix("_DepthInvReproj", reproj.inverse);
+        mat.SetMatrix("_RGBReprojMatrix", M);
+        mat.SetVector("_ZBufferParams2", zParams);
+        mat.SetInt("_DepthWidth", depthTexArray.width);
+        mat.SetInt("_DepthHeight", depthTexArray.height);
+        mat.SetInt("_Slice", 0);
+        mat.SetFloat("_MinRawDepth", 0.0001f);
+        mat.SetFloat("_EdgeThreshold", edgeThreshold);
+
+        // One quad (2 tris = 6 verts) per (W-1)x(H-1) grid cell, with a depth
+        // buffer so occlusion is resolved on the GPU.
+        int cellsX = depthTexArray.width - 1;
+        int cellsY = depthTexArray.height - 1;
+
+        RenderTexture rt = new RenderTexture(w, h, 24, RenderTextureFormat.RFloat);
+        rt.Create();
+        var prev = RenderTexture.active;
+        Graphics.SetRenderTarget(rt);
+        GL.Clear(true, true, new Color(0, 0, 0, 0), 1.0f); // depth -> far
+        mat.SetPass(0);
+        Graphics.DrawProceduralNow(MeshTopology.Triangles, cellsX * cellsY * 6, 1);
+
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RFloat, false);
+        tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+        tex.Apply();
+        RenderTexture.active = prev;
+
+        Destroy(rt);
+        return tex;
+    }
+
     void SaveKeyframeToDisk(CapturedKeyframe kf, int index)
     {
         string dir = $"{Application.persistentDataPath}/keyframes/{index}";
@@ -205,6 +299,10 @@ public class KeyFrameManager : MonoBehaviour
         // Registered Depth (metric, pixel-aligned with LeftRGB)
         byte[] depthBytes = kf.depth.EncodeToEXR();
         //System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
+
+        // Forward mesh-registered metric depth (continuous surface), full float precision
+        byte[] depthMeshBytes = kf.depthMesh.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
+        System.IO.File.WriteAllBytes($"{dir}/DepthMesh.exr", depthMeshBytes);
 
         byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
         //System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
@@ -316,6 +414,7 @@ public struct CapturedKeyframe
     public Texture2D rgb;
     public Texture2D rgbRight;
     public Texture2D depth;
+    public Texture2D depthMesh;
     public Texture2D rawDepth;
     public float CamDistance;
     public Vector3 position;

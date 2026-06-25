@@ -1643,6 +1643,13 @@ MonoBehaviour:
   leftCamera: {fileID: 499068566}
   depthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
   registrationMaterial: {fileID: 2100000, guid: c2a019f7c15df09459738b2fedea4e10, type: 2}
+  registrationForwardMaterial: {fileID: 2100000, guid: 46f05d4defe074148ac4ef2d6b4e1203, type: 2}
+  registrationMeshMaterial: {fileID: 2100000, guid: 1d593ebb236985d4e926599774ec5a91, type: 2}
+  depthNear: 0.1
+  depthFar: 8
+  projYSign: 1
+  splatScale: 5
+  edgeThreshold: 0.15
 --- !u!4 &2039053024
 Transform:
   m_ObjectHideFlags: 0
