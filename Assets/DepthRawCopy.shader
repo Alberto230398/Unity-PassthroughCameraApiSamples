@@ -1,16 +1,13 @@
 Shader "Custom/DepthRawCopy"
 {
     // Copies slice 0 (left eye) of the environment depth Texture2DArray into a
-    // single-channel render target WITHOUT any modification. Used to save the
-    // unregistered raw depth (reversed-Z buffer values, raw=0 near .. raw=1 far)
-    // to rawDepth.exr.
+    // float render target WITHOUT any modification. Used to save the unregistered
+    // raw depth (reversed-Z buffer values, raw=0 near .. raw=1 far) to rawDepth.exr.
     //
-    // We sample the GLOBAL _EnvironmentDepthTexture directly (the same name the
-    // Meta SDK binds via Shader.SetGlobalTexture and samples in its own cginc),
-    // rather than relying on Graphics.Blit to bind the array source to _MainTex.
-    // A plain Blit binds a Texture2DArray source as a 2D sampler, so a
-    // UNITY_SAMPLE_TEX2DARRAY(_MainTex, ...) read returns the cleared far value
-    // (a flat/uniform "monocolore" result). Reading the global avoids that.
+    // Samples _MainTex (the Blit source) exactly like the working Custom/DepthPreview
+    // shader. Writes the raw value into all RGB channels (no 1.0-depth inversion) so
+    // EncodeToEXR preserves it regardless of which channel the reader picks.
+    Properties { _MainTex("Depth Texture Array", 2DArray) = "white" {} }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -23,12 +20,13 @@ Shader "Custom/DepthRawCopy"
             #pragma require 2darray
             #include "UnityCG.cginc"
 
-            UNITY_DECLARE_TEX2DARRAY(_EnvironmentDepthTexture);
+            UNITY_DECLARE_TEX2DARRAY(_MainTex);
 
-            float frag(v2f_img i) : SV_Target
+            float4 frag(v2f_img i) : SV_Target
             {
                 // Raw reversed-Z depth value, slice 0 (left eye), unmodified.
-                return UNITY_SAMPLE_TEX2DARRAY(_EnvironmentDepthTexture, float3(i.uv, 0)).r;
+                float d = UNITY_SAMPLE_TEX2DARRAY(_MainTex, float3(i.uv, 0)).r;
+                return float4(d, d, d, 1.0);
             }
             ENDCG
         }

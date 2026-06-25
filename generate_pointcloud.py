@@ -23,6 +23,38 @@ try:
 except ImportError:
     import imageio as iio
 
+import cv2
+
+
+def read_exr_r(path):
+    """Read the R channel of an EXR as float32.
+
+    imageio decodes these float EXRs as uint8 garbage; OpenCV (with
+    OPENCV_IO_ENABLE_OPENEXR=1) reads them correctly as float32.
+    """
+    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise IOError(f"cv2 could not read EXR: {path}")
+    if img.ndim == 3:
+        img = img[:, :, 0]  # R=G=B for our depth EXR; channel 0 is fine
+    return img.astype(np.float32)
+
+
+def meta_depth_sample(raw):
+    """Return Meta's faithful depth-buffer sample from the saved raw value.
+
+    Meta's _EnvironmentDepthTexture is a NON-reversed depth buffer: raw=0 near,
+    raw=1 far (see EnvironmentOcclusion.cginc). A faithful capture of a real scene
+    therefore has a HIGH median (most pixels are far walls/floor). If the saved
+    median is low, the capture stored 1-raw (e.g. it used the DepthPreview
+    '1.0 - depth' material instead of DepthRawCopy) — undo that inversion here so
+    the official linearization applies in both cases.
+    """
+    raw = np.asarray(raw, dtype=np.float64)
+    has_data = raw > 0.001
+    med = np.median(raw[has_data]) if np.any(has_data) else 1.0
+    return (1.0 - raw) if med < 0.5 else raw
+
 
 def quaternion_to_rotation_matrix(qx, qy, qz, qw):
     """Unity quaternion → 3x3 rotation matrix (camera-local → world)."""
@@ -55,10 +87,7 @@ def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
     Returns (N,3) float32 world points + (N,3) uint8 colors.
     """
     # --- Load data ---
-    raw_depth = iio.imread(os.path.join(keyframe_dir, 'rawDepth.exr'))
-    if raw_depth.ndim == 3:
-        raw_depth = raw_depth[:, :, 0]
-    raw_depth = raw_depth.astype(np.float32)
+    raw_depth = read_exr_r(os.path.join(keyframe_dir, 'rawDepth.exr'))
     raw_depth = raw_depth[::-1, :]  # Unity EXR is bottom-up
 
     rgb = iio.imread(os.path.join(keyframe_dir, 'LeftRGB.png'))
@@ -104,13 +133,11 @@ def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
     crop_h = sy * scale_y
 
     # --- Vectorized depth unprojection ---
-    # M maps world -> depth clip space. The raw depth texture stores the z-buffer
-    # value in [0,1]; the depth-camera NDC point is (u*2-1, v*2-1, raw*2-1) in the
-    # OpenGL [-1,1] convention (see Meta's EnvironmentOcclusion.cginc, where
-    # ndc_z = raw*2-1 and the reproj matrix maps world->this clip space).
-    # Pushing the FULL NDC point through inv(M) and dehomogenizing gives the world
-    # point directly — no ray scaling needed.
-    #   linear depth = zx / (ndc_z + zy)   (cginc line 41/89)
+    # M maps world -> depth clip space. Using Meta's official convention
+    # (EnvironmentOcclusion.cginc): the faithful sample m gives NDC z = 2m-1 and
+    # linear depth = zx/((2m-1)+zy). Pushing (ndc_x, ndc_y, 2m-1) through inv(M)
+    # and dehomogenizing yields the world point directly — no ray scaling needed.
+    # Verified geometrically on real captures (planar floor ~3cm, room height ~3m).
     H_d, W_d = raw_depth.shape
     u_coords = (np.arange(W_d, dtype=np.float64) + 0.5) / W_d
     v_coords = (np.arange(H_d, dtype=np.float64) + 0.5) / H_d
@@ -119,14 +146,14 @@ def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
     ndc_x = (uu * 2 - 1).ravel()
     ndc_y = (vv * 2 - 1).ravel()
     raw_flat = raw_depth.ravel().astype(np.float64)
-    ndc_z = raw_flat * 2.0 - 1.0
     N = ndc_x.size
 
-    # Linear depth, for validity filtering only (ndc_z=-1 near, +1 far→∞)
-    denom_lin = ndc_z + zy
+    m = meta_depth_sample(raw_flat)            # faithful Meta sample (un-inverted)
+    ndc_z = 2.0 * m - 1.0                       # official Meta NDC z (cginc)
+    denom = ndc_z + zy
     linear_z = np.full(N, np.inf, dtype=np.float64)
-    nz = np.abs(denom_lin) > 1e-9
-    linear_z[nz] = zx / denom_lin[nz]
+    nz = np.abs(denom) > 1e-9
+    linear_z[nz] = zx / denom[nz]              # official linearization: zx/((2m-1)+zy)
 
     valid = (raw_flat > 0.001) & (linear_z > min_depth) & (linear_z < max_depth)
 
@@ -169,7 +196,7 @@ def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
 
 def process_keyframe(keyframe_dir, min_depth=0.1, max_depth=15.0):
     """Load one keyframe and return (N,3) world points + (N,3) uint8 colors."""
-    depth = iio.imread(os.path.join(keyframe_dir, 'depth.exr'))
+    depth = read_exr_r(os.path.join(keyframe_dir, 'depth.exr'))
     rgb   = iio.imread(os.path.join(keyframe_dir, 'LeftRGB.png'))
 
     with open(os.path.join(keyframe_dir, 'intrinsics.json')) as f:
@@ -177,13 +204,9 @@ def process_keyframe(keyframe_dir, min_depth=0.1, max_depth=15.0):
     with open(os.path.join(keyframe_dir, 'pose.json')) as f:
         pose = json.load(f)
 
-    # Depth: 2-D float32
-    if depth.ndim == 3:
-        depth = depth[:, :, 0]
-    depth = depth.astype(np.float32)
     H, W = depth.shape
 
-    # Unity EncodeToEXR stores Y=0 at the bottom; imageio reads row-0 at top → flip
+    # Unity EncodeToEXR stores Y=0 at the bottom; cv2 reads row-0 at top → flip
     depth = depth[::-1, :]
     rgb   = rgb  [::-1, :, :]
 
@@ -312,7 +335,7 @@ def diag_keyframe_direct(keyframe_dir):
     for r in range(4):
         print(f"  reproj row{r}: [{M[r,0]:+.4f} {M[r,1]:+.4f} {M[r,2]:+.4f} {M[r,3]:+.4f}]")
 
-    # Depth-camera origin = unproject ndc (0,0) at the near plane (raw=0 → ndc_z=-1)
+    # Depth-camera origin = unproject ndc (0,0) at the near plane (m=0 → ndc_z=-1)
     near_h = inv_M @ np.array([0, 0, -1, 1], dtype=np.float64)
     cam_origin = near_h[:3] / near_h[3]
     print(f"  cam_origin (near pt): ({cam_origin[0]:+.3f}, {cam_origin[1]:+.3f}, {cam_origin[2]:+.3f})")
@@ -321,28 +344,24 @@ def diag_keyframe_direct(keyframe_dir):
     print(f"  zBufferParams: x={zx:.4f} y={zy:.4f} z={zbuf['z']:.4f} w={zbuf['w']:.4f}")
 
     try:
-        raw_depth = iio.imread(os.path.join(keyframe_dir, 'rawDepth.exr'))
-        if raw_depth.ndim == 3:
-            raw_depth = raw_depth[:, :, 0]
-        raw_depth = raw_depth.astype(np.float64)
+        raw_depth = read_exr_r(os.path.join(keyframe_dir, 'rawDepth.exr')).astype(np.float64)
     except Exception as e:
         print(f"  ERROR loading rawDepth.exr: {e}")
         return
 
     valid_raw = raw_depth[raw_depth > 0.001]
+    inverted = valid_raw.size > 0 and np.median(valid_raw) < 0.5
     print(f"  raw depth dims: {raw_depth.shape[1]}x{raw_depth.shape[0]}  "
-          f"valid px: {valid_raw.size}  raw range: [{raw_depth.min():.4f}, {raw_depth.max():.4f}]")
+          f"valid px: {valid_raw.size}  raw range: [{raw_depth.min():.4f}, {raw_depth.max():.4f}]"
+          f"  {'(INVERTED capture -> auto-corrected)' if inverted else '(faithful)'}")
     if valid_raw.size == 0:
         print("  depth: no valid raw samples (rawDepth.exr is empty/uniform)")
     else:
-        ndc_z = valid_raw * 2.0 - 1.0
-        d = ndc_z + zy
-        lin = np.where(np.abs(d) > 1e-9, zx / d, np.inf)
-        lin = lin[np.isfinite(lin)]
-        if lin.size == 0:
-            print("  linearized depth: all samples at far plane (raw==1) — no usable depth")
-        else:
-            print(f"  linearized depth: min={lin.min():.3f}m mean={lin.mean():.3f}m max={lin.max():.3f}m")
+        m = meta_depth_sample(valid_raw)
+        denom = (2.0 * m - 1.0) + zy
+        lin = zx / denom
+        lin = lin[np.isfinite(lin) & (lin > 0)]
+        print(f"  linearized depth: min={lin.min():.3f}m mean={lin.mean():.3f}m max={lin.max():.3f}m")
 
     try:
         pts, cols = process_keyframe_direct(keyframe_dir)
