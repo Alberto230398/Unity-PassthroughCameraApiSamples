@@ -1643,6 +1643,7 @@ MonoBehaviour:
   leftCamera: {fileID: 499068566}
   depthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
   registrationMaterial: {fileID: 2100000, guid: c2a019f7c15df09459738b2fedea4e10, type: 2}
+  rawDepthMaterial: {fileID: 2100000, guid: e73f344c088c7cb4d92e4e9070fdcda6, type: 2}
 --- !u!4 &2039053024
 Transform:
   m_ObjectHideFlags: 0

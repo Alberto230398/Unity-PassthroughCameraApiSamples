@@ -33,6 +33,140 @@ def quaternion_to_rotation_matrix(qx, qy, qz, qw):
     ], dtype=np.float64)
 
 
+def parse_unity_matrix4x4(data):
+    """Parse Unity Matrix4x4 JSON -> numpy 4x4 array.
+
+    Unity's JsonUtility serializes Matrix4x4 with fields named mRC where
+    mRowCol means row R, column C (e.g. m01 = row 0, column 1).
+    """
+    return np.array([
+        [data['m00'], data['m01'], data['m02'], data['m03']],
+        [data['m10'], data['m11'], data['m12'], data['m13']],
+        [data['m20'], data['m21'], data['m22'], data['m23']],
+        [data['m30'], data['m31'], data['m32'], data['m33']],
+    ], dtype=np.float64)
+
+
+def process_keyframe_direct(keyframe_dir, min_depth=0.1, max_depth=15.0):
+    """
+    Direct 3D unprojection: raw depth -> world points -> RGB color lookup.
+    No iterative shader registration needed.
+
+    Returns (N,3) float32 world points + (N,3) uint8 colors.
+    """
+    # --- Load data ---
+    raw_depth = iio.imread(os.path.join(keyframe_dir, 'rawDepth.exr'))
+    if raw_depth.ndim == 3:
+        raw_depth = raw_depth[:, :, 0]
+    raw_depth = raw_depth.astype(np.float32)
+    raw_depth = raw_depth[::-1, :]  # Unity EXR is bottom-up
+
+    rgb = iio.imread(os.path.join(keyframe_dir, 'LeftRGB.png'))
+    rgb = rgb[::-1, :, :]  # Match Y-flip
+    H_rgb, W_rgb = rgb.shape[:2]
+
+    with open(os.path.join(keyframe_dir, 'LeftCamPose.json')) as f:
+        pose = json.load(f)
+    with open(os.path.join(keyframe_dir, 'LeftIntrinsics.json')) as f:
+        intr = json.load(f)
+    with open(os.path.join(keyframe_dir, 'reprojection.json')) as f:
+        reproj_data = json.load(f)
+    with open(os.path.join(keyframe_dir, 'zbuffer_params.json')) as f:
+        zbuf = json.load(f)
+
+    # --- Parse parameters ---
+    M = parse_unity_matrix4x4(reproj_data)
+    inv_M = np.linalg.inv(M)
+
+    zx, zy = float(zbuf['x']), float(zbuf['y'])
+    if zy == 0:
+        raise ValueError("zBufferParams.y == 0, cannot linearize depth")
+
+    fx = float(intr['FocalLength']['x'])
+    fy = float(intr['FocalLength']['y'])
+    cx = float(intr['PrincipalPoint']['x'])
+    cy = float(intr['PrincipalPoint']['y'])
+    sx = float(intr['SensorResolution']['x'])
+    sy = float(intr['SensorResolution']['y'])
+
+    rgb_pos = np.array([pose['px'], pose['py'], pose['pz']], dtype=np.float64)
+    R_rgb = quaternion_to_rotation_matrix(pose['rx'], pose['ry'], pose['rz'], pose['rw'])
+
+    # --- RGB crop region (mirrors SDK's CalcSensorCropRegion) ---
+    scale_x = W_rgb / sx
+    scale_y = H_rgb / sy
+    max_s = max(scale_x, scale_y)
+    scale_x /= max_s
+    scale_y /= max_s
+    crop_x = sx * (1.0 - scale_x) * 0.5
+    crop_y = sy * (1.0 - scale_y) * 0.5
+    crop_w = sx * scale_x
+    crop_h = sy * scale_y
+
+    # --- Vectorized depth unprojection ---
+    # M maps world -> depth clip space. The raw depth texture stores the z-buffer
+    # value in [0,1]; the depth-camera NDC point is (u*2-1, v*2-1, raw*2-1) in the
+    # OpenGL [-1,1] convention (see Meta's EnvironmentOcclusion.cginc, where
+    # ndc_z = raw*2-1 and the reproj matrix maps world->this clip space).
+    # Pushing the FULL NDC point through inv(M) and dehomogenizing gives the world
+    # point directly — no ray scaling needed.
+    #   linear depth = zx / (ndc_z + zy)   (cginc line 41/89)
+    H_d, W_d = raw_depth.shape
+    u_coords = (np.arange(W_d, dtype=np.float64) + 0.5) / W_d
+    v_coords = (np.arange(H_d, dtype=np.float64) + 0.5) / H_d
+    uu, vv = np.meshgrid(u_coords, v_coords)
+
+    ndc_x = (uu * 2 - 1).ravel()
+    ndc_y = (vv * 2 - 1).ravel()
+    raw_flat = raw_depth.ravel().astype(np.float64)
+    ndc_z = raw_flat * 2.0 - 1.0
+    N = ndc_x.size
+
+    # Linear depth, for validity filtering only (ndc_z=-1 near, +1 far→∞)
+    denom_lin = ndc_z + zy
+    linear_z = np.full(N, np.inf, dtype=np.float64)
+    nz = np.abs(denom_lin) > 1e-9
+    linear_z[nz] = zx / denom_lin[nz]
+
+    valid = (raw_flat > 0.001) & (linear_z > min_depth) & (linear_z < max_depth)
+
+    # Unproject the full NDC point through inv(M)
+    ones = np.ones(N, dtype=np.float64)
+    clip = np.stack([ndc_x, ndc_y, ndc_z, ones], axis=0)   # 4xN
+    world_h = inv_M @ clip                                   # 4xN
+    valid &= np.abs(world_h[3]) > 1e-9
+    world_pts = (world_h[:3] / world_h[3:4]).T              # Nx3
+    world_pts = world_pts[valid]
+
+    # --- Project into RGB camera ---
+    p_local = (R_rgb.T @ (world_pts - rgb_pos).T)  # 3 x N_valid
+
+    in_front = p_local[2] > 0.01
+    p_local = p_local[:, in_front]
+    world_pts = world_pts[in_front]
+
+    # Pinhole projection
+    sensor_x = (p_local[0] / p_local[2]) * fx + cx
+    sensor_y = (p_local[1] / p_local[2]) * fy + cy
+
+    # Sensor -> image UV via crop
+    u_rgb = (sensor_x - crop_x) / crop_w
+    v_rgb = (sensor_y - crop_y) / crop_h
+
+    # Bounds check
+    in_bounds = (u_rgb >= 0) & (u_rgb < 1) & (v_rgb >= 0) & (v_rgb < 1)
+    u_rgb = u_rgb[in_bounds]
+    v_rgb = v_rgb[in_bounds]
+    world_pts = world_pts[in_bounds]
+
+    # Sample RGB (nearest neighbor)
+    px_x = np.clip((u_rgb * W_rgb).astype(int), 0, W_rgb - 1)
+    px_y = np.clip((v_rgb * H_rgb).astype(int), 0, H_rgb - 1)
+    colors = rgb[px_y, px_x, :3]
+
+    return world_pts.astype(np.float32), colors.astype(np.uint8)
+
+
 def process_keyframe(keyframe_dir, min_depth=0.1, max_depth=15.0):
     """Load one keyframe and return (N,3) world points + (N,3) uint8 colors."""
     depth = iio.imread(os.path.join(keyframe_dir, 'depth.exr'))
@@ -160,42 +294,113 @@ def diag_keyframe(keyframe_dir):
           f"res={intr['SensorResolution']['x']}x{intr['SensorResolution']['y']}")
 
 
+def diag_keyframe_direct(keyframe_dir):
+    """Print diagnostics for the direct unprojection pipeline — no PLY output."""
+    name = os.path.basename(keyframe_dir)
+    print(f"\n── Keyframe {name} (direct) ─────────────────────")
+    try:
+        with open(os.path.join(keyframe_dir, 'reprojection.json')) as f:
+            reproj_data = json.load(f)
+        with open(os.path.join(keyframe_dir, 'zbuffer_params.json')) as f:
+            zbuf = json.load(f)
+        M = parse_unity_matrix4x4(reproj_data)
+        inv_M = np.linalg.inv(M)
+    except Exception as e:
+        print(f"  ERROR loading matrices: {e}")
+        return
+
+    for r in range(4):
+        print(f"  reproj row{r}: [{M[r,0]:+.4f} {M[r,1]:+.4f} {M[r,2]:+.4f} {M[r,3]:+.4f}]")
+
+    # Depth-camera origin = unproject ndc (0,0) at the near plane (raw=0 → ndc_z=-1)
+    near_h = inv_M @ np.array([0, 0, -1, 1], dtype=np.float64)
+    cam_origin = near_h[:3] / near_h[3]
+    print(f"  cam_origin (near pt): ({cam_origin[0]:+.3f}, {cam_origin[1]:+.3f}, {cam_origin[2]:+.3f})")
+
+    zx, zy = float(zbuf['x']), float(zbuf['y'])
+    print(f"  zBufferParams: x={zx:.4f} y={zy:.4f} z={zbuf['z']:.4f} w={zbuf['w']:.4f}")
+
+    try:
+        raw_depth = iio.imread(os.path.join(keyframe_dir, 'rawDepth.exr'))
+        if raw_depth.ndim == 3:
+            raw_depth = raw_depth[:, :, 0]
+        raw_depth = raw_depth.astype(np.float64)
+    except Exception as e:
+        print(f"  ERROR loading rawDepth.exr: {e}")
+        return
+
+    valid_raw = raw_depth[raw_depth > 0.001]
+    print(f"  raw depth dims: {raw_depth.shape[1]}x{raw_depth.shape[0]}  "
+          f"valid px: {valid_raw.size}  raw range: [{raw_depth.min():.4f}, {raw_depth.max():.4f}]")
+    if valid_raw.size == 0:
+        print("  depth: no valid raw samples (rawDepth.exr is empty/uniform)")
+    else:
+        ndc_z = valid_raw * 2.0 - 1.0
+        d = ndc_z + zy
+        lin = np.where(np.abs(d) > 1e-9, zx / d, np.inf)
+        lin = lin[np.isfinite(lin)]
+        if lin.size == 0:
+            print("  linearized depth: all samples at far plane (raw==1) — no usable depth")
+        else:
+            print(f"  linearized depth: min={lin.min():.3f}m mean={lin.mean():.3f}m max={lin.max():.3f}m")
+
+    try:
+        pts, cols = process_keyframe_direct(keyframe_dir)
+        total = raw_depth.size
+        print(f"  colored points: {len(pts):,} / {total:,} depth px  ({100*len(pts)/total:.1f}% coverage)")
+        if len(pts) < 0.1 * total:
+            print("  WARNING: fewer than 10% of depth pixels produced colored points")
+    except Exception as e:
+        print(f"  ERROR in process_keyframe_direct: {e}")
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     diag_only = '--diag' in args
-    args = [a for a in args if a != '--diag']
+    registered = '--registered' in args
+    direct = not registered  # direct is the default pipeline
+    args = [a for a in args if a not in ('--diag', '--registered', '--direct')]
 
     if not args:
-        print(f"Usage: {os.path.basename(sys.argv[0])} <keyframes_root> [output.ply] [--diag]")
-        print("  --diag  print depth/pose stats for every keyframe, skip PLY generation")
+        print(f"Usage: {os.path.basename(sys.argv[0])} <keyframes_root> [output.ply] [--diag] [--registered]")
+        print("  (default)     direct unprojection from rawDepth.exr")
+        print("  --registered  legacy pipeline using GPU-registered depth.exr")
+        print("  --diag        print stats for every keyframe, skip PLY generation")
         sys.exit(1)
 
     root    = args[0]
     out_ply = args[1] if len(args) > 1 else os.path.join(root, 'pointcloud.ply')
 
-    # Collect all subdirectories that contain a depth.exr
+    marker = 'depth.exr' if registered else 'rawDepth.exr'
+
+    # Collect all subdirectories that contain the required depth file
     kf_dirs = sorted(
         [os.path.join(root, d) for d in os.listdir(root)
          if os.path.isdir(os.path.join(root, d))
-         and os.path.exists(os.path.join(root, d, 'depth.exr'))],
+         and os.path.exists(os.path.join(root, d, marker))],
         key=lambda p: int(os.path.basename(p)) if os.path.basename(p).isdigit() else 0
     )
 
     if not kf_dirs:
-        print(f"No keyframes found in {root}")
+        print(f"No keyframes (with {marker}) found in {root}")
         sys.exit(1)
 
-    print(f"Found {len(kf_dirs)} keyframes")
+    print(f"Found {len(kf_dirs)} keyframes  [pipeline: {'registered' if registered else 'direct'}]")
 
     if diag_only:
         for kf in kf_dirs:
-            diag_keyframe(kf)
+            if registered:
+                diag_keyframe(kf)
+            else:
+                diag_keyframe_direct(kf)
         sys.exit(0)
+
+    process = process_keyframe if registered else process_keyframe_direct
 
     all_pts, all_cols = [], []
     for kf in kf_dirs:
         try:
-            pts, cols = process_keyframe(kf)
+            pts, cols = process(kf)
             all_pts.append(pts)
             all_cols.append(cols)
             print(f"  {os.path.basename(kf):>4s}  {len(pts):>8,} points")

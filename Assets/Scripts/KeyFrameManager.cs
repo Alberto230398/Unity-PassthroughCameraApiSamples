@@ -22,6 +22,7 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] Camera leftCamera;
     [SerializeField] Material depthMaterial;            // Legacy preview shader (DepthShader)
     [SerializeField] Material registrationMaterial;     // DepthRegistration shader for aligned output
+    [SerializeField] Material rawDepthMaterial;         // DepthRawCopy shader: extracts array slice 0 unmodified
 
     private RenderTexture target;
     private RenderTexture rightTarget;
@@ -207,7 +208,7 @@ public class KeyFrameManager : MonoBehaviour
         //System.IO.File.WriteAllBytes($"{dir}/depth.exr", depthBytes);
 
         byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
-        //System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
+        System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
 
 
         // Pose
@@ -272,11 +273,11 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllText($"{dir}/RightIntrinsics.json", RGBRightInstrinsics);
         
         System.IO.File.WriteAllText($"{dir}/PassthroughCamDistance.txt",
-    CamDistance.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        CamDistance.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-        //System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
-        //System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
-        //System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
+        System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
+        System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
+        System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
     }
 
     Texture2D SaveFrame(RenderTexture rt)
@@ -297,6 +298,9 @@ public class KeyFrameManager : MonoBehaviour
     {
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.RFloat);
         rt.Create();
+        // Must blit through the array-sampling shader: a plain Graphics.Blit uses the
+        // default sampler2D shader and cannot read a Texture2DArray slice, yielding a
+        // flat/uniform ("monocolore") result.
         Graphics.Blit(depthTexArray, rt);
 
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RFloat, false);
