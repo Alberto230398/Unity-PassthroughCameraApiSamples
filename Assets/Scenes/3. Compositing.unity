@@ -775,11 +775,11 @@ Transform:
   m_GameObject: {fileID: 965421038}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0.71, z: 0.7}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 7829410447506789058}
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &965421040
 MonoBehaviour:
@@ -858,7 +858,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 1000
-  field of view: 90
+  field of view: 80
   orthographic: 0
   orthographic size: 5
   m_Depth: 0
@@ -1816,8 +1816,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.669, z: 2.03}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 1.8179554, y: 1.8179554, z: 1.8179554}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2124,9 +2124,6 @@ PrefabInstance:
       addedObject: {fileID: 296668095}
     - targetCorrespondingSourceObject: {fileID: 5644074855955420804, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 965421039}
-    - targetCorrespondingSourceObject: {fileID: 5644074855955420804, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1224278333}
     - targetCorrespondingSourceObject: {fileID: 7778735864111554172, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
       insertIndex: 0
@@ -2325,3 +2322,4 @@ SceneRoots:
   - {fileID: 1069895191}
   - {fileID: 133824275}
   - {fileID: 1448538043}
+  - {fileID: 965421039}
