@@ -66,40 +66,67 @@ public class VideoManager : MonoBehaviour
         return camRenderTexture;
     }
 
-    // Applica un cap di bitrate + framerate su tutti i sender video dopo la connessione.
-    // Senza cap il bitrate cresce saturando il buffer di rete → lag progressivo; il primo
-    // keyframe a bitrate libero era enorme e saturava subito il link → freeze.
+    const ulong MaxBps = 2_500_000u;   // 2.5 Mbps: sostenibile per 960² su Wi-Fi
+    const uint MaxFps = 30u;           // cap framerate per non sforare la banda
+
+    // Applica un cap di bitrate + framerate su tutti i sender video.
+    // Senza cap il BWE rampa il bitrate nei primi secondi fino a saturare il Wi-Fi →
+    // perdita pacchetti → freeze (tipicamente dopo 4-5s). I sender però esistono solo
+    // dopo StartVideoTransmission(), che può avvenire DOPO l'evento WebRTCConnected:
+    // per questo aspettiamo che compaiano invece di applicare una sola volta a 0.5s.
     IEnumerator ApplyBitrateCap()
     {
-        const ulong maxBps = 2_500_000u;   // 2.5 Mbps: sostenibile per 960² su Wi-Fi
-        const uint maxFps = 30u;           // cap framerate per non sforare la banda
-        yield return new WaitForSeconds(0.5f); // applica presto, prima del primo keyframe
+        System.Collections.Generic.Dictionary<string, RTCRtpSender> senders = null;
 
-        // webRTCManager è privato nel package; accediamo con reflection
+        float timeout = 30f;
+        while (timeout > 0f)
+        {
+            senders = GetVideoSenders();
+            if (senders != null && senders.Count > 0) break;
+            yield return new WaitForSeconds(0.5f);
+            timeout -= 0.5f;
+        }
+
+        if (senders == null || senders.Count == 0)
+        {
+            Debug.LogWarning("[VideoManager] Nessun sender video trovato entro il timeout: cap NON applicato");
+            yield break;
+        }
+
+        ApplyCap(senders);
+
+        // Riapplica dopo qualche secondo: una rinegoziazione o il reset dei parametri
+        // lato BWE potrebbe azzerare il cap.
+        yield return new WaitForSeconds(4f);
+        senders = GetVideoSenders();
+        if (senders != null && senders.Count > 0) ApplyCap(senders);
+    }
+
+    // Legge il dizionario privato videoTrackSenders dal WebRTCManager via reflection.
+    System.Collections.Generic.Dictionary<string, RTCRtpSender> GetVideoSenders()
+    {
         var managerField = typeof(SimpleWebRTC.WebRTCConnection)
             .GetField("webRTCManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (managerField == null) { Debug.LogWarning("[VideoManager] webRTCManager field not found"); yield break; }
-
-        var manager = managerField.GetValue(_webRTCConnection);
-        if (manager == null) yield break;
+        var manager = managerField?.GetValue(_webRTCConnection);
+        if (manager == null) return null;
 
         var sendersField = manager.GetType()
             .GetField("videoTrackSenders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (sendersField == null) { Debug.LogWarning("[VideoManager] videoTrackSenders field not found"); yield break; }
+        return sendersField?.GetValue(manager) as System.Collections.Generic.Dictionary<string, RTCRtpSender>;
+    }
 
-        var senders = sendersField.GetValue(manager) as System.Collections.Generic.Dictionary<string, RTCRtpSender>;
-        if (senders == null) yield break;
-
+    void ApplyCap(System.Collections.Generic.Dictionary<string, RTCRtpSender> senders)
+    {
         foreach (var kv in senders)
         {
             var param = kv.Value.GetParameters();
             foreach (var enc in param.encodings)
             {
-                enc.maxBitrate = maxBps;
-                enc.maxFramerate = maxFps;
+                enc.maxBitrate = MaxBps;
+                enc.maxFramerate = MaxFps;
             }
             kv.Value.SetParameters(param);
-            Debug.Log($"[VideoManager] Cap {maxBps / 1_000_000f:F1} Mbps / {maxFps} fps applicato al sender → {kv.Key}");
+            Debug.Log($"[VideoManager] Cap {MaxBps / 1_000_000f:F1} Mbps / {MaxFps} fps applicato al sender → {kv.Key}");
         }
     }
 
