@@ -66,6 +66,14 @@ public class PassthroughVideo : MonoBehaviour, VideoInterface
     void VideoInterface.stop()
     {
         if (blitCoroutine != null)
+        {
             StopCoroutine(blitCoroutine);
+            blitCoroutine = null;
+        }
+        if (_blitMat != null)
+        {
+            Destroy(_blitMat);
+            _blitMat = null;
+        }
     }
 }
