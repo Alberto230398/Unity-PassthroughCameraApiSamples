@@ -1,22 +1,3 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// VIDEO MANAGER
-//
-// Gestisce quale sorgente video viene streamata via WebRTC.
-// Le sorgenti (PassthroughVideo, CompositeVideo...) implementano VideoInterface
-// e scrivono tutte sulla stessa RenderTexture condivisa (camRenderTexture).
-// WebRTC legge da quella RT e la trasmette al browser.
-//
-// Flusso:
-//  1. WebRTCConnection chiama l'evento statico OnRequestVideoTrack
-//  2. CreateVideo() crea la RenderTexture (se non esiste) e attiva la sorgente
-//  3. La sorgente fa Graphics.Blit() sulla RT ogni frame
-//  4. Quando la connessione WebRTC è stabilita, ApplyBitrateCap() limita il
-//     bitrate VP8 per evitare che cresca nel tempo saturando il buffer di rete
-//
-// Tasto B (Button.Two): cambia sorgente video (passthrough / compositing)
-// Tasto A (Button.One): avvia la trasmissione WebRTC (una sola volta)
-// ─────────────────────────────────────────────────────────────────────────────
-
 using System.Collections;
 using System.Linq;
 using Meta.XR;
@@ -42,6 +23,8 @@ public class VideoManager : MonoBehaviour
 
     void OnWebRTCConnected() => StartCoroutine(ApplyBitrateCap());
 
+    bool videoActive;
+
     void Awake()
     {
         _webRTCConnection = GetComponentInParent<WebRTCConnection>() ?? FindAnyObjectByType<WebRTCConnection>();
@@ -53,13 +36,9 @@ public class VideoManager : MonoBehaviour
 
     void Update()
     {
-        // Tasto B: cicla tra le sorgenti video disponibili
         if (OVRInput.GetDown(OVRInput.Button.Two) && currentSource != null)
             SwitchSource((activeSourceIndex + 1) % sources.Length);
 
-        // Tasto A: avvia la trasmissione WebRTC.
-        // Il guard su IsVideoTransmissionActive evita di avviarla due volte
-        // (il check definitivo è anche dentro StartVideoTransmission() nel package).
         if (OVRInput.GetDown(OVRInput.Button.One))
         {
             _webRTCConnection ??= FindAnyObjectByType<WebRTCConnection>();
@@ -71,12 +50,11 @@ public class VideoManager : MonoBehaviour
         }
     }
 
-    // Chiamato da WebRTCConnection.OnRequestVideoTrack quando il package
-    // è pronto per ricevere la RenderTexture da streamare.
-    // Riusa la stessa RT tra le riconnessioni: riallocarla ogni volta
-    // senza Release() perdeva ~6.5MB di VRAM ad ogni StartVideoTransmission.
+    // VideoManager
     public RenderTexture CreateVideo()
     {
+        // Riusa la stessa RenderTexture tra le riconnessioni: riallocarla ogni volta
+        // senza Release() perdeva ~6.5MB di VRAM ad ogni StartVideoTransmission.
         if (camRenderTexture == null)
         {
             camRenderTexture = new RenderTexture(1280, 1280, 0, RenderTextureFormat.BGRA32);
@@ -88,12 +66,12 @@ public class VideoManager : MonoBehaviour
 
     // Applica un cap VP8 a maxBps su tutti i sender video dopo la connessione WebRTC.
     // Senza cap il bitrate cresce nel tempo saturando il buffer di rete → lag progressivo.
-    // webRTCManager e videoTrackSenders sono privati nel package: accediamo via reflection.
     IEnumerator ApplyBitrateCap()
     {
         const uint maxBps = 6_000_000u;
         yield return new WaitForSeconds(2f); // lascia tempo all'ICE di stabilizzarsi
 
+        // webRTCManager è privato nel package; accediamo con reflection
         var managerField = typeof(SimpleWebRTC.WebRTCConnection)
             .GetField("webRTCManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (managerField == null) { Debug.LogWarning("[VideoManager] webRTCManager field not found"); yield break; }
@@ -114,7 +92,7 @@ public class VideoManager : MonoBehaviour
             foreach (var enc in param.encodings)
                 enc.maxBitrate = maxBps;
             kv.Value.SetParameters(param);
-            Debug.Log($"[VideoManager] Bitrate cap {maxBps / 1_000_000f:F1} Mbps → {kv.Key}");
+            Debug.Log($"[VideoManager] Bitrate cap {maxBps / 1_000_000f:F1} Mbps applicato al sender → {kv.Key}");
         }
     }
 
@@ -131,9 +109,6 @@ public class VideoManager : MonoBehaviour
         }
     }
 
-    // Ferma la sorgente corrente e ne attiva una nuova sulla stessa RenderTexture.
-    // La RT rimane invariata: WebRTC continua a leggere dallo stesso buffer,
-    // quindi lo switch è seamless senza rinegoziare la connessione.
     void SwitchSource(int index)
     {
         currentSource?.stop();
