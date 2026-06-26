@@ -57,19 +57,23 @@ public class VideoManager : MonoBehaviour
         // senza Release() perdeva ~6.5MB di VRAM ad ogni StartVideoTransmission.
         if (camRenderTexture == null)
         {
-            camRenderTexture = new RenderTexture(1280, 1280, 0, RenderTextureFormat.BGRA32);
+            // 960x960 invece di 1280x1280: ~44% di pixel in meno. A 1280² l'encoder
+            // (VP8 software / H264 hardware) non reggeva il realtime → freeze sul keyframe.
+            camRenderTexture = new RenderTexture(960, 960, 0, RenderTextureFormat.BGRA32);
             camRenderTexture.Create();
         }
         SwitchSource(activeSourceIndex);
         return camRenderTexture;
     }
 
-    // Applica un cap VP8 a maxBps su tutti i sender video dopo la connessione WebRTC.
-    // Senza cap il bitrate cresce nel tempo saturando il buffer di rete → lag progressivo.
+    // Applica un cap di bitrate + framerate su tutti i sender video dopo la connessione.
+    // Senza cap il bitrate cresce saturando il buffer di rete → lag progressivo; il primo
+    // keyframe a bitrate libero era enorme e saturava subito il link → freeze.
     IEnumerator ApplyBitrateCap()
     {
-        const uint maxBps = 6_000_000u;
-        yield return new WaitForSeconds(2f); // lascia tempo all'ICE di stabilizzarsi
+        const ulong maxBps = 2_500_000u;   // 2.5 Mbps: sostenibile per 960² su Wi-Fi
+        const uint maxFps = 30u;           // cap framerate per non sforare la banda
+        yield return new WaitForSeconds(0.5f); // applica presto, prima del primo keyframe
 
         // webRTCManager è privato nel package; accediamo con reflection
         var managerField = typeof(SimpleWebRTC.WebRTCConnection)
@@ -90,9 +94,12 @@ public class VideoManager : MonoBehaviour
         {
             var param = kv.Value.GetParameters();
             foreach (var enc in param.encodings)
+            {
                 enc.maxBitrate = maxBps;
+                enc.maxFramerate = maxFps;
+            }
             kv.Value.SetParameters(param);
-            Debug.Log($"[VideoManager] Bitrate cap {maxBps / 1_000_000f:F1} Mbps applicato al sender → {kv.Key}");
+            Debug.Log($"[VideoManager] Cap {maxBps / 1_000_000f:F1} Mbps / {maxFps} fps applicato al sender → {kv.Key}");
         }
     }
 
