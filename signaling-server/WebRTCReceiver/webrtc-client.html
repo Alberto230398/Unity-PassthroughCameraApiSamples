@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WebRTC Receiver</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+  }
+  video {
+    width: 100vw; height: 100vh;
+    object-fit: cover; /* riempie tutto lo schermo croppando i bordi invece di aggiungere bande nere */
+    display: block;
+  }
+  #overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #333; font-size: 0.8rem; letter-spacing: 0.1em;
+    font-family: 'Courier New', monospace;
+    pointer-events: none;
+  }
+  /* I controlli sono nascosti e appaiono solo al passaggio del mouse */
+  #controls {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 12px; padding: 16px; align-items: center;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    font-family: 'Courier New', monospace;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  body:hover #controls { opacity: 1; }
+  input {
+    background: rgba(255,255,255,0.08); border: 1px solid #444; color: #e0e0e0;
+    padding: 6px 10px; font-family: inherit; font-size: 0.8rem;
+    width: 240px;
+  }
+  button {
+    background: none; border: 1px solid #555; color: #aaa;
+    padding: 6px 16px; font-family: inherit; font-size: 0.8rem;
+    cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  button:hover { border-color: #888; color: #fff; }
+  button:disabled { opacity: 0.3; cursor: default; }
+  #status { font-size: 0.7rem; color: #666; margin-left: 4px; }
+</style>
+</head>
+<body>
+
+<video id="video" autoplay playsinline muted></video>
+<div id="overlay">NO SIGNAL</div>
+
+<div id="controls">
+  <!-- PC aziendale: <input id="wsUrl" value="ws://10.10.10.147:8765" /> -->
+  <input id="wsUrl" value="ws://192.168.1.4:8765" />
+  <input id="questId" value="Quest-PeerId" style="width:140px" />
+  <button id="btnConnect" onclick="connect()">Connect</button>
+  <button id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
+  <span id="status">disconnected</span>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// WEBRTC RECEIVER
+//
+// Flusso generale:
+//  1. Il browser apre una connessione WebSocket al signaling server
+//  2. Si registra come "Browser-PeerId" (isVideoSender=False)
+//  3. Quando arriva il Quest (NEWPEER), crea una RTCPeerConnection e manda
+//     un OFFER dichiarando che vuole ricevere video
+//  4. Il Quest risponde con un ANSWER e aggiunge il suo VideoStreamTrack
+//  5. I due peer si scambiano ICE candidates per trovare un percorso di rete
+//  6. Una volta connessi (ICE connected), il video arriva direttamente dal
+//     Quest senza più passare per il server
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PEER_ID = 'Browser-PeerId';
+let ws, pc;
+
+// ICE candidates che arrivano prima che setRemoteDescription sia completato
+// vengono messi in coda e applicati subito dopo. Senza questa coda verrebbero
+// ignorati silenziosamente, lasciando la connessione senza percorso media.
+let pendingCandidates = [];
+let remoteDescSet = false;
+
+let liveEdgeWatchdog = null;
+
+// I log vanno in console (F12) invece che in pagina per non occupare spazio
+function log(msg, type='info') {
+  console.log(`[${type}] ${msg}`);
+}
+
+function setStatus(s) { document.getElementById('status').textContent = s; }
+
+// ─── Live-edge watchdog ───────────────────────────────────────────────────────
+// Il jitter buffer del browser può crescere nel tempo, causando un ritardo
+// progressivo tra il video live sul Quest e quello visualizzato nel browser.
+// Ogni 2s controlliamo quanto siamo indietro rispetto alla fine del buffer:
+// se superiamo MAX_DRIFT_S saltiamo direttamente alla live edge.
+const MAX_DRIFT_S = 0.25;
+
+function startLiveEdgeWatchdog() {
+  stopLiveEdgeWatchdog();
+  const video = document.getElementById('video');
+  liveEdgeWatchdog = setInterval(() => {
+    if (!video.buffered.length) return;
+    const liveEdge = video.buffered.end(video.buffered.length - 1);
+    const drift = liveEdge - video.currentTime;
+    if (drift > MAX_DRIFT_S) {
+      video.currentTime = liveEdge - 0.05;
+      log(`Live-edge resync (drift ${drift.toFixed(2)}s)`, 'warn');
+    }
+  }, 2000);
+}
+
+function stopLiveEdgeWatchdog() {
+  if (liveEdgeWatchdog) { clearInterval(liveEdgeWatchdog); liveEdgeWatchdog = null; }
+}
+
+// ─── ICE candidate queue ──────────────────────────────────────────────────────
+async function flushPendingCandidates() {
+  for (const c of pendingCandidates) {
+    try { await pc.addIceCandidate(new RTCIceCandidate(c)); }
+    catch (err) { log(`ICE flush error: ${err}`, 'warn'); }
+  }
+  pendingCandidates = [];
+}
+
+// ─── Connessione WebSocket al signaling server ────────────────────────────────
+function connect() {
+  const url = document.getElementById('wsUrl').value.trim();
+  const questId = document.getElementById('questId').value.trim();
+
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    log('WebSocket connected', 'ok');
+    setStatus('ws connected');
+    // Ci registriamo come receiver (isVideoSender=False)
+    ws.send(`CONNECT|${PEER_ID}|ALL|${PEER_ID} joined|0|False`);
+    document.getElementById('btnConnect').disabled = true;
+    document.getElementById('btnDisconnect').disabled = false;
+  };
+
+  ws.onmessage = async (e) => {
+    const parts = e.data.split('|');
+    const type = parts[0];
+    const sender = parts[1];
+    const payload = parts[3];
+
+    log(`← ${type} from ${sender}`);
+
+    switch (type) {
+
+      case 'NEWPEER': {
+        // Il Quest si è connesso al server. Creiamo la peer connection e
+        // mandiamo un OFFER dichiarando che vogliamo ricevere video/audio.
+        if (sender === questId) {
+          log(`Quest peer detected: ${sender}`, 'ok');
+          await createPeerConnection(sender);
+          ws.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|False`);
+          await sendOffer(sender);
+        }
+        break;
+      }
+
+      case 'NEWPEERACK': {
+        // Il Quest ci ha mandato il suo ACK prima che noi ricevessimo il suo NEWPEER.
+        // Creiamo la peer connection se non esiste ancora.
+        if (sender === questId && !pc) {
+          await createPeerConnection(sender);
+          await sendOffer(sender);
+        }
+        break;
+      }
+
+      case 'OFFER': {
+        // Il Quest manda un nuovo OFFER quando aggiunge un video track (es. dopo
+        // che l'utente preme il tasto per avviare la trasmissione). Rispondiamo
+        // con un ANSWER per accettare il nuovo formato di sessione.
+        await handleOffer(sender, payload);
+        break;
+      }
+
+      case 'ANSWER': {
+        // Il Quest ha accettato il nostro OFFER iniziale. Impostiamo la sua
+        // session description come "remote" e sblocchiamo la coda ICE.
+        await pc.setRemoteDescription(JSON.parse(payload));
+        remoteDescSet = true;
+        await flushPendingCandidates();
+        break;
+      }
+
+      case 'CANDIDATE': {
+        // Il Quest ci manda i suoi indirizzi di rete (IP locale, IP pubblico via STUN).
+        // Se la remote description è già impostata, li aggiungiamo subito.
+        // Altrimenti li mettiamo in coda.
+        const c = JSON.parse(payload);
+        if (remoteDescSet) {
+          try { await pc.addIceCandidate(new RTCIceCandidate(c)); }
+          catch (err) { log(`ICE error: ${err}`, 'warn'); }
+        } else {
+          pendingCandidates.push(c);
+        }
+        break;
+      }
+
+      case 'COMPLETE':
+        setStatus('connected');
+        break;
+    }
+  };
+
+  ws.onclose = () => { log('WebSocket closed', 'warn'); setStatus('disconnected'); };
+  ws.onerror = (e) => { log(`WebSocket error: ${e}`, 'error'); };
+}
+
+// ─── RTCPeerConnection ────────────────────────────────────────────────────────
+async function createPeerConnection(remotePeerId) {
+  if (pc) return; // già esistente, non ricreare
+  remoteDescSet = false;
+  pendingCandidates = [];
+
+  pc = new RTCPeerConnection({
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    // Il server STUN serve a scoprire il nostro IP pubblico (srflx candidate)
+    // per permettere connessioni attraverso NAT. Su LAN locale basterebbe
+    // l'IP host, ma il STUN non fa male.
+  });
+
+  // Quando generiamo i nostri ICE candidates, li mandiamo al Quest tramite
+  // il signaling server così lui sa dove trovarci in rete.
+  pc.onicecandidate = e => {
+    if (e.candidate)
+      ws.send(`CANDIDATE|${PEER_ID}|${remotePeerId}|${JSON.stringify(e.candidate)}|0|False`);
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    log(`ICE state: ${pc.iceConnectionState}`);
+    setStatus(pc.iceConnectionState);
+    // "connected" = canale media attivo, video in arrivo
+    // "disconnected" = connessione persa (rete instabile o peer caduto)
+    // "failed" = nessun candidate funzionante trovato
+  };
+
+  pc.ontrack = e => {
+    if (e.track.kind !== 'video') return;
+
+    const video = document.getElementById('video');
+
+    // Impostiamo jitterBufferTarget su ogni track ricevuto (anche dopo rinegoziazione),
+    // ma NON resettiamo srcObject se è già impostato: farlo causerebbe un freeze
+    // ad ogni OFFER del Quest (cambio sorgente, rinegoziazione bitrate, ecc.).
+    const receiver = pc.getReceivers().find(r => r.track === e.track);
+    if (receiver && 'jitterBufferTarget' in receiver)
+      receiver.jitterBufferTarget = 0;
+
+    if (!video.srcObject) {
+      video.srcObject = e.streams[0] ?? new MediaStream([e.track]);
+      document.getElementById('overlay').style.display = 'none';
+      startLiveEdgeWatchdog();
+    }
+  };
+}
+
+// Crea e manda un OFFER al Quest dichiarando che vogliamo ricevere video e audio.
+// L'OFFER contiene la session description (SDP): codec supportati, risoluzione, ecc.
+async function sendOffer(remotePeerId) {
+  const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+  await pc.setLocalDescription(offer);
+  ws.send(`OFFER|${PEER_ID}|${remotePeerId}|${JSON.stringify(offer)}|0|False`);
+}
+
+// Gestisce un OFFER in arrivo dal Quest (es. quando aggiunge il video track).
+// Imposta la session description remota, genera un ANSWER e lo rimanda.
+async function handleOffer(remotePeerId, payload) {
+  if (!pc) await createPeerConnection(remotePeerId);
+  await pc.setRemoteDescription(JSON.parse(payload));
+  remoteDescSet = true;
+  await flushPendingCandidates();
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  ws.send(`ANSWER|${PEER_ID}|${remotePeerId}|${JSON.stringify(answer)}|0|False`);
+}
+
+// ─── Disconnessione ───────────────────────────────────────────────────────────
+function disconnect() {
+  stopLiveEdgeWatchdog();
+  pc?.close(); pc = null;
+  ws?.close(); ws = null;
+  remoteDescSet = false;
+  pendingCandidates = [];
+  document.getElementById('video').srcObject = null;
+  document.getElementById('overlay').style.display = 'flex';
+  document.getElementById('btnConnect').disabled = false;
+  document.getElementById('btnDisconnect').disabled = true;
+  setStatus('disconnected');
+}
+</script>
+</body>
+</html>
