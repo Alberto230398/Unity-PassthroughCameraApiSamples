@@ -129,3 +129,5 @@ MonoBehaviour:
   rotationSpeed: 45
   rotateAroundCenter: 0
   verticalSpeed: 1
+  isGrabbed: 0
+  objectSpawner: {fileID: 1097476644622687349, guid: 7cdc6379b47554fb1a5a14b08410530b, type: 3}

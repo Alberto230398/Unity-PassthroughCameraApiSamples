@@ -26,6 +26,9 @@ public class Movement : MonoBehaviour
     private bool controllersWereActive = false;
 
     private Camera mainCamera;
+
+    public bool isGrabbed = false;
+    public ObjectSpawner objectSpawner; // Riferimento allo script ObjectSpawner
     void Start()
     {
         mainCamera = Camera.main;
@@ -69,6 +72,11 @@ public class Movement : MonoBehaviour
 
     void Update()
     {
+        if (objectSpawner != null && objectSpawner.HasObject() && !isGrabbed)
+        {
+            return;
+        }
+        
         if (controlTarget == null) return;
 
         // Controlla se i controller sono in mano (connessi e attivi)

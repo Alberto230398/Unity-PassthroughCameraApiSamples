@@ -9,14 +9,14 @@ public class ObjectSpawner : MonoBehaviour
 
     Vector3 initialPosition;
 
-    bool hasObject; 
+    public bool hasObject; 
 
     public bool debug;
     public float distance = 2f;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        initialPosition = new Vector3(rightHand.position.x*distance, rightHand.position.y, rightHand.position.z);
+        initialPosition = new Vector3(rightHand.position.x, rightHand.position.y, rightHand.position.z*distance);
     }
 
     // Update is called once per frame
@@ -33,11 +33,13 @@ public class ObjectSpawner : MonoBehaviour
     {
         if (!hasObject)
         {
+            Debug.Log("Spawning object");
             InstantiateObject();
             hasObject = true;
         }
         else
         {
+            Debug.Log("Leaving object");
             LeaveObject();
             hasObject = false;
         }
@@ -47,11 +49,21 @@ public class ObjectSpawner : MonoBehaviour
     {
         spawnedObject = Instantiate(objectToSpawn, initialPosition, rightHand.rotation);
         spawnedObject.transform.SetParent(rightHand);
+
+        spawnedObject.GetComponent<Movement>().isGrabbed = true;
+        spawnedObject.GetComponent<Movement>().objectSpawner = this;
     }
 
     void LeaveObject()
     {
         spawnedObject.transform.SetParent(null);
+        spawnedObject.GetComponent<Movement>().isGrabbed = false;
         spawnedObject = null;
+        hasObject = false;
+    }
+
+    public bool HasObject()
+    {
+        return hasObject;
     }
 }
