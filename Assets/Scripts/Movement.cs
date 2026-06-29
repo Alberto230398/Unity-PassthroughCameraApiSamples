@@ -70,13 +70,13 @@ public class Movement : MonoBehaviour
         CalculateVisualCenter();
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (objectSpawner != null && objectSpawner.HasObject() && !isGrabbed)
         {
             return;
         }
-        
+
         if (controlTarget == null) return;
 
         // Controlla se i controller sono in mano (connessi e attivi)

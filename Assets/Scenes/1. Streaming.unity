@@ -939,7 +939,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6261356481906875576, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: m_CullingMask.m_Bits
-      value: 119
+      value: 4294967295
       objectReference: {fileID: 0}
     - target: {fileID: 7656660945580363180, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: field of view
@@ -3022,6 +3022,10 @@ PrefabInstance:
     - target: {fileID: 3482434622614105121, guid: 27d8bea71fd63d64a83211c39f51cb4a, type: 3}
       propertyPath: m_Name
       value: Quad
+      objectReference: {fileID: 0}
+    - target: {fileID: 3482434622614105121, guid: 27d8bea71fd63d64a83211c39f51cb4a, type: 3}
+      propertyPath: m_Layer
+      value: 7
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
