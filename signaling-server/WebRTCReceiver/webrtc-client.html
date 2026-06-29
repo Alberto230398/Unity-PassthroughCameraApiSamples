@@ -5,131 +5,113 @@
 <title>WebRTC Receiver</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+
   body {
-    background: #0a0a0a;
-    color: #e0e0e0;
-    font-family: 'Courier New', monospace;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    padding: 20px;
-  }
-  h1 { font-size: 1rem; letter-spacing: 0.2em; color: #555; margin-bottom: 20px; text-transform: uppercase; }
-  #video-container {
-    width: 100%;
-    max-width: 1280px;
-    aspect-ratio: 16/9;
-    background: #111;
-    border: 1px solid #222;
-    position: relative;
+    background: #000;
     overflow: hidden;
+    width: 100vw; height: 100vh;
   }
+
   video {
+    position: fixed; inset: 0;
     width: 100%; height: 100%;
     object-fit: contain;
     display: block;
+    background: #000;
   }
+
   #overlay {
-    position: absolute; inset: 0;
+    position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    color: #333; font-size: 0.8rem; letter-spacing: 0.1em;
+    color: #2a2a2a; font-size: 0.85rem; letter-spacing: 0.25em;
+    font-family: 'Courier New', monospace; text-transform: uppercase;
     pointer-events: none;
+    background: #000;
   }
+
+  /* controlli flottanti, visibili solo sull'hover */
   #controls {
-    display: flex; gap: 12px; margin-top: 16px; align-items: center;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+    padding: 14px 20px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    opacity: 0;
+    transition: opacity 0.25s;
+    font-family: 'Courier New', monospace;
   }
+  body:hover #controls { opacity: 1; }
+
   input {
-    background: #111; border: 1px solid #333; color: #e0e0e0;
-    padding: 6px 10px; font-family: inherit; font-size: 0.8rem;
-    width: 260px;
+    background: rgba(20,20,20,0.9); border: 1px solid #333; color: #ccc;
+    padding: 5px 9px; font-family: inherit; font-size: 0.75rem;
+    width: 230px;
   }
+  input.short { width: 130px; }
+
   button {
-    background: none; border: 1px solid #444; color: #aaa;
-    padding: 6px 16px; font-family: inherit; font-size: 0.8rem;
-    cursor: pointer; letter-spacing: 0.1em; text-transform: uppercase;
+    background: none; border: 1px solid #555; color: #999;
+    padding: 5px 14px; font-family: inherit; font-size: 0.75rem;
+    cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase;
     transition: border-color 0.2s, color 0.2s;
   }
-  button:hover { border-color: #888; color: #fff; }
+  button:hover { border-color: #aaa; color: #fff; }
   button:disabled { opacity: 0.3; cursor: default; }
-  #log {
-    margin-top: 16px;
-    width: 100%; max-width: 1280px;
-    height: 160px; overflow-y: auto;
-    background: #0d0d0d; border: 1px solid #1a1a1a;
-    padding: 10px; font-size: 0.72rem; line-height: 1.6;
-  }
-  .log-info  { color: #666; }
-  .log-ok    { color: #4a9; }
-  .log-warn  { color: #a84; }
-  .log-error { color: #a44; }
+
   #status {
-    font-size: 0.7rem; color: #444; margin-left: 8px; letter-spacing: 0.05em;
+    font-size: 0.7rem; color: #555; letter-spacing: 0.05em; min-width: 80px;
   }
 </style>
 </head>
 <body>
 
-<h1>WebRTC Quest Receiver</h1>
-
-<div id="video-container">
-  <video id="video" autoplay playsinline muted></video>
-  <div id="overlay">NO SIGNAL</div>
-</div>
+<video id="video" autoplay playsinline muted></video>
+<div id="overlay">NO SIGNAL</div>
 
 <div id="controls">
   <input id="wsUrl" value="ws://10.10.10.147:8765" />
-  <input id="questId" value="Quest-PeerId" style="width:140px" />
+  <input id="questId" class="short" value="Quest-PeerId" />
   <button id="btnConnect" onclick="connect()">Connect</button>
   <button id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
   <span id="status">disconnected</span>
 </div>
 
-<div id="log"></div>
-
 <script>
 const PEER_ID = 'Browser-PeerId';
 let ws, pc;
-
-function log(msg, type='info') {
-  const el = document.getElementById('log');
-  const line = document.createElement('div');
-  line.className = `log-${type}`;
-  line.textContent = `${new Date().toISOString().slice(11,23)}  ${msg}`;
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-}
+let pendingCandidates = [];
+let remoteDescSet = false;
 
 function setStatus(s) { document.getElementById('status').textContent = s; }
+function showOverlay()  { document.getElementById('overlay').style.display = 'flex'; }
+function hideOverlay()  { document.getElementById('overlay').style.display = 'none'; }
 
 function connect() {
-  const url = document.getElementById('wsUrl').value.trim();
+  const url     = document.getElementById('wsUrl').value.trim();
   const questId = document.getElementById('questId').value.trim();
 
   ws = new WebSocket(url);
 
   ws.onopen = () => {
-    log('WebSocket connected', 'ok');
     setStatus('ws connected');
-    // register as receiver (isVideoAudioSender=False)
     ws.send(`CONNECT|${PEER_ID}|ALL|${PEER_ID} joined|0|False`);
-    document.getElementById('btnConnect').disabled = true;
+    document.getElementById('btnConnect').disabled    = true;
     document.getElementById('btnDisconnect').disabled = false;
   };
 
   ws.onmessage = async (e) => {
-    const parts = e.data.split('|');
-    const type = parts[0];
-    const sender = parts[1];
+    const parts   = e.data.split('|');
+    const type    = parts[0];
+    const sender  = parts[1];
     const payload = parts[3];
-
-    log(`← ${type} from ${sender}`, 'info');
 
     switch (type) {
       case 'NEWPEER': {
-        // Quest connected — create PC and send offer
         if (sender === questId) {
-          log(`Quest peer detected: ${sender}`, 'ok');
+          // Quest si è (ri)registrato: chiudi sempre la pc vecchia prima di crearne una nuova.
+          // Senza questo, dopo che il Quest esce e rientra dall'app la pc precedente
+          // rimane aperta e createPeerConnection() la riutilizzava (if pc return),
+          // causando negoziazione su una connessione già morta → lag.
+          closePeerConnection();
           await createPeerConnection(sender);
           ws.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|False`);
           await sendOffer(sender);
@@ -138,94 +120,118 @@ function connect() {
       }
       case 'NEWPEERACK': {
         if (sender === questId && !pc) {
-          log(`Got NEWPEERACK from Quest`, 'ok');
           await createPeerConnection(sender);
           await sendOffer(sender);
         }
         break;
       }
-      case 'OFFER': {
-        log('Received OFFER, sending ANSWER', 'ok');
+      case 'OFFER':
         await handleOffer(sender, payload);
         break;
-      }
-      case 'ANSWER': {
-        log('Received ANSWER', 'ok');
+      case 'ANSWER':
         await pc.setRemoteDescription(JSON.parse(payload));
+        remoteDescSet = true;
+        for (const c of pendingCandidates) {
+          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
+        }
+        pendingCandidates = [];
         break;
-      }
       case 'CANDIDATE': {
         try {
           const c = JSON.parse(payload);
-          await pc.addIceCandidate(new RTCIceCandidate(c));
-        } catch(err) { log(`ICE error: ${err}`, 'warn'); }
+          if (remoteDescSet) {
+            await pc.addIceCandidate(new RTCIceCandidate(c));
+          } else {
+            pendingCandidates.push(c);
+          }
+        } catch (_) {}
         break;
       }
-      case 'COMPLETE':
-        log('Connection complete', 'ok');
-        setStatus('connected');
+      case 'PEERLEFT': {
+        // Il server invia PEERLEFT quando un peer perde il WebSocket senza DISPOSE
+        // (es. Quest va in background). Chiudiamo la pc così quando il Quest rientra
+        // e manda NEWPEER partiamo da zero invece di riutilizzare una pc morta.
+        if (sender === questId) {
+          closePeerConnection();
+          showOverlay();
+        }
         break;
+      }
     }
   };
 
-  ws.onclose = () => { log('WebSocket closed', 'warn'); setStatus('disconnected'); };
-  ws.onerror = (e) => { log(`WebSocket error: ${e}`, 'error'); };
+  ws.onclose = () => {
+    setStatus('disconnected');
+    // Se il WS cade la negoziazione è persa; alla prossima connessione serve una pc fresca.
+    closePeerConnection();
+    showOverlay();
+  };
+  ws.onerror = () => setStatus('ws error');
+}
+
+function closePeerConnection() {
+  if (pc) { pc.close(); pc = null; }
+  pendingCandidates = [];
+  remoteDescSet = false;
+  document.getElementById('video').srcObject = null;
 }
 
 async function createPeerConnection(remotePeerId) {
   if (pc) return;
-  pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-  });
+  pendingCandidates = [];
+  remoteDescSet = false;
+
+  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
 
   pc.onicecandidate = e => {
-    if (e.candidate) {
+    if (e.candidate)
       ws.send(`CANDIDATE|${PEER_ID}|${remotePeerId}|${JSON.stringify(e.candidate)}|0|False`);
-    }
   };
 
   pc.oniceconnectionstatechange = () => {
-    log(`ICE state: ${pc.iceConnectionState}`, pc.iceConnectionState === 'connected' ? 'ok' : 'info');
     setStatus(pc.iceConnectionState);
-  };
-
-  pc.ontrack = e => {
-    log(`Track received: ${e.track.kind}`, 'ok');
-    if (e.track.kind === 'video') {
-      const video = document.getElementById('video');
-      video.srcObject = e.streams[0] || new MediaStream([e.track]);
-      document.getElementById('overlay').style.display = 'none';
+    // Mostra subito "NO SIGNAL" appena ICE fallisce/si disconnette, senza aspettare PEERLEFT.
+    // Questo copre il caso in cui il Quest va in background ma il WS rimane aperto (TCP keepalive).
+    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
+      document.getElementById('video').srcObject = null;
+      showOverlay();
     }
   };
 
-  log('PeerConnection created', 'info');
+  pc.ontrack = e => {
+    if (e.track.kind === 'video') {
+      document.getElementById('video').srcObject = e.streams[0] || new MediaStream([e.track]);
+      hideOverlay();
+    }
+  };
 }
 
 async function sendOffer(remotePeerId) {
   const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
   await pc.setLocalDescription(offer);
   ws.send(`OFFER|${PEER_ID}|${remotePeerId}|${JSON.stringify(offer)}|0|False`);
-  log('OFFER sent', 'ok');
 }
 
 async function handleOffer(remotePeerId, payload) {
   if (!pc) await createPeerConnection(remotePeerId);
   await pc.setRemoteDescription(JSON.parse(payload));
+  remoteDescSet = true;
+  for (const c of pendingCandidates) {
+    try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
+  }
+  pendingCandidates = [];
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
   ws.send(`ANSWER|${PEER_ID}|${remotePeerId}|${JSON.stringify(answer)}|0|False`);
-  log('ANSWER sent', 'ok');
 }
 
 function disconnect() {
-  pc?.close(); pc = null;
+  closePeerConnection();
   ws?.close(); ws = null;
-  document.getElementById('video').srcObject = null;
-  document.getElementById('overlay').style.display = 'flex';
-  document.getElementById('btnConnect').disabled = false;
+  showOverlay();
+  document.getElementById('btnConnect').disabled    = false;
   document.getElementById('btnDisconnect').disabled = true;
   setStatus('disconnected');
-  log('Disconnected', 'warn');
 }
 </script>
 </body>
