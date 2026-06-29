@@ -128,6 +128,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
+      propertyPath: _maxFramerate
+      value: 72
+      objectReference: {fileID: 0}
+    - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: CameraPosition
       value: 1
       objectReference: {fileID: 0}
@@ -861,6 +865,14 @@ PrefabInstance:
       propertyPath: instanceId
       value: 879d7cc4-0b68-4de9-a652-be3428b77328
       objectReference: {fileID: 0}
+    - target: {fileID: 1490833047072534093, guid: 04604d4418d122a429d7d069835730b3, type: 3}
+      propertyPath: LateLatching
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1490833047072534093, guid: 04604d4418d122a429d7d069835730b3, type: 3}
+      propertyPath: _enableDynamicResolution
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 1899050322549531729, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -913,6 +925,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2809421636269937212, guid: 04604d4418d122a429d7d069835730b3, type: 3}
+      propertyPath: useFixedUpdateForTracking
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4155525568184230718, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: m_Name
       value: '[BuildingBlock] Camera Rig (1)'
@@ -927,7 +943,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7656660945580363180, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: field of view
-      value: 73
+      value: 75
       objectReference: {fileID: 0}
     - target: {fileID: 7656660945580363180, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: m_FOVAxisMode
@@ -3745,6 +3761,50 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b2bd1832faf34498a11983fe7aa1da8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::KeyFrameManager
+--- !u!1 &1997064723
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1997064725}
+  - component: {fileID: 1997064724}
+  m_Layer: 0
+  m_Name: FPSManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1997064724
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1997064723}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9eb9a0958a2945bfbe40147cf6b3aeb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+--- !u!4 &1997064725
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1997064723}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 2.44339, y: 0, z: 8.04988}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1748868315344937867 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
@@ -3825,6 +3885,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
+      propertyPath: _maxFramerate
+      value: 72
+      objectReference: {fileID: 0}
     - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: TargetMaterial
       value: 
@@ -3970,3 +4034,4 @@ SceneRoots:
   - {fileID: 1241523486}
   - {fileID: 8618951716171618344}
   - {fileID: 770377265}
+  - {fileID: 1997064725}
