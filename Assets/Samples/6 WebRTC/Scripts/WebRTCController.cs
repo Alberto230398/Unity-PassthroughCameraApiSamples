@@ -22,12 +22,12 @@ namespace QuestCameraKit.WebRTC {
         private void Update() {
             if (_webRTCConnection == null) return;
 
-            if (OVRInput.GetDown(OVRInput.Button.One)) {
+            /*if (OVRInput.GetDown(OVRInput.Button.One)) {
                 ChangeColor(Color.blue);
                 _webRTCConnection.StartVideoTransmission();
                 Debug.Log("BUTTON DETECTED");
                 ChangeColor(Color.red);
-            }
+            }*/
 #if UNITY_EDITOR
             if (Input.GetKeyUp(KeyCode.Space)) {
                 _webRTCConnection.StartVideoTransmission();
