@@ -36,7 +36,7 @@ public class KeyFrameManager : MonoBehaviour
         Debug.Log("Saving Keyframe...");
         string dir = $"{Application.persistentDataPath}/keyframes/";
         //string dir = "/Users/albertomerletti/Desktop/keyframes/";
-        System.IO.Directory.CreateDirectory(dir);
+        //System.IO.Directory.CreateDirectory(dir);
 
         renderCamera.Render();
         blendedRawImage.texture = blendedTexture;
@@ -50,7 +50,7 @@ public class KeyFrameManager : MonoBehaviour
         // 3. Ripristina sempre l'active (importante!)
         RenderTexture.active = null;
 
-        byte[] bytes = blendedTexture2D.EncodeToPNG();
+        //byte[] bytes = blendedTexture2D.EncodeToPNG();
         //System.IO.File.WriteAllBytes($"{dir}/KeyFrame_{System.DateTime.Now:yyyyMMdd_HHmmss}.png", bytes);
     }
 

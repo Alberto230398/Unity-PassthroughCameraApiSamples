@@ -940,7 +940,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5429625303380975997, guid: 04604d4418d122a429d7d069835730b3, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1226499007}
   m_SourcePrefab: {fileID: 100100000, guid: 04604d4418d122a429d7d069835730b3, type: 3}
 --- !u!20 &704288581 stripped
 Camera:
@@ -3296,7 +3299,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9056062534241220868, guid: 9ec3eb95f035bc84e8389a5176edf47a, type: 3}
       propertyPath: WebSocketServerAddress
-      value: ws://10.42.0.10:8765
+      value: ws://10.10.10.147:8765
       objectReference: {fileID: 0}
     - target: {fileID: 9056062534241220868, guid: 9ec3eb95f035bc84e8389a5176edf47a, type: 3}
       propertyPath: WebSocketConnectionActive
@@ -3469,6 +3472,29 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
+--- !u!1 &1226499003 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5429625303380975997, guid: 04604d4418d122a429d7d069835730b3, type: 3}
+  m_PrefabInstance: {fileID: 704288580}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1226499007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1226499003}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3f038612aec9d640b1e8eef8163f358, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRCamAligner
+  passthroughCamera: {fileID: 1748868315344937867}
+  trackingSpace: {fileID: 0}
+  useExactProjection: 0
+  applyAlignment: 1
+  logPoseDelta: 1
+  logIntervalSeconds: 1
 --- !u!1 &1241523483
 GameObject:
   m_ObjectHideFlags: 0
@@ -3894,6 +3920,10 @@ PrefabInstance:
       propertyPath: rightHand
       value: 
       objectReference: {fileID: 704288583}
+    - target: {fileID: 1097476644622687349, guid: 7cdc6379b47554fb1a5a14b08410530b, type: 3}
+      propertyPath: objectToSpawn
+      value: 
+      objectReference: {fileID: 7316862245687684652, guid: 9162b23c8c7789a4296a7603af5fb20c, type: 3}
     - target: {fileID: 5778830869252717688, guid: 7cdc6379b47554fb1a5a14b08410530b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -0
