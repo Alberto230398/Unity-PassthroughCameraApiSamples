@@ -188,6 +188,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
+--- !u!4 &215569612 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7691917451044878399, guid: 04604d4418d122a429d7d069835730b3, type: 3}
+  m_PrefabInstance: {fileID: 704288580}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &230628488
 GameObject:
   m_ObjectHideFlags: 0
@@ -2954,7 +2959,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Movement
   moveSpeed: 1
   rotationSpeed: 45
-  rotateAroundCenter: 0
+  rotateAroundCenter: 1
   verticalSpeed: 1
   isGrabbed: 0
   objectSpawner: {fileID: 572049952}
@@ -3484,13 +3489,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1226499003}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e3f038612aec9d640b1e8eef8163f358, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VRCamAligner
   passthroughCamera: {fileID: 1748868315344937867}
-  trackingSpace: {fileID: 0}
+  trackingSpace: {fileID: 215569612}
   useExactProjection: 0
   applyAlignment: 1
   logPoseDelta: 1
