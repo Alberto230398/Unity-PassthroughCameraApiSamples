@@ -928,7 +928,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6261356481906875576, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: m_CullingMask.m_Bits
-      value: 119
+      value: 4294967295
       objectReference: {fileID: 0}
     - target: {fileID: 7656660945580363180, guid: 04604d4418d122a429d7d069835730b3, type: 3}
       propertyPath: field of view
@@ -2963,6 +2963,11 @@ MonoBehaviour:
   verticalSpeed: 1
   isGrabbed: 0
   objectSpawner: {fileID: 572049952}
+--- !u!4 &770377268 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 1be73c87d584a2d42ba75f33fca0fa9f, type: 3}
+  m_PrefabInstance: {fileID: 770377265}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &830222541
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -3921,6 +3926,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1097476644622687349, guid: 7cdc6379b47554fb1a5a14b08410530b, type: 3}
+      propertyPath: parent
+      value: 
+      objectReference: {fileID: 770377268}
     - target: {fileID: 1097476644622687349, guid: 7cdc6379b47554fb1a5a14b08410530b, type: 3}
       propertyPath: rightHand
       value: 

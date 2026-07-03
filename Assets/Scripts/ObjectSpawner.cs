@@ -7,6 +7,8 @@ public class ObjectSpawner : MonoBehaviour
 
     private GameObject spawnedObject;
 
+    [SerializeField] private Transform parent;
+
     Vector3 initialPosition;
 
     public bool hasObject; 
@@ -57,7 +59,9 @@ public class ObjectSpawner : MonoBehaviour
     void LeaveObject()
     {
         spawnedObject.transform.SetParent(null);
+        spawnedObject.transform.SetParent(parent);
         spawnedObject.GetComponent<Movement>().isGrabbed = false;
+        spawnedObject.GetComponent<Movement>().enabled = false;
         spawnedObject = null;
         hasObject = false;
     }
