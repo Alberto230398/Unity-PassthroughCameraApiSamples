@@ -28,8 +28,8 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] PassthroughCameraAccess passthroughCameraRight;
     [SerializeField] Camera leftCamera;
     [SerializeField] Material rawDepthMaterial;         // Shader DepthRawCopy: estrae la slice 0 del Texture2DArray senza modifiche
-    [SerializeField] Material linearDepthMaterial;      // Shader DepthLinearExport: linearizza la depth raw
     [SerializeField] EnvironmentDepthManager environmentDepthManager; // Gate della cattura su IsDepthAvailable
+    [SerializeField] Text debugText;
 
     private RenderTexture target;
     private RenderTexture rightTarget;
@@ -48,6 +48,8 @@ public class KeyFrameManager : MonoBehaviour
 
     void Update()
     {
+        Matrix4x4[] reprojMatrix = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
+        debugText.text = "Matrix saved: " + reprojMatrix[1].ToString();
         // La depth non è prodotta nei primi frame dopo l'attivazione del depth
         // manager; catturare prima produce una texture tutta-lontana (raw=1.0).
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
@@ -77,6 +79,17 @@ public class KeyFrameManager : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        //StartCoroutine(writeMatrix());
+    }
+
+    IEnumerator writeMatrix()
+    {
+        yield return new WaitForSeconds(3f);
+        Matrix4x4 reprojMatrix = Shader.GetGlobalMatrix("_EnvironmentDepthReprojectionMatrices");
+        debugText.text = "Matrix saved: " + reprojMatrix.ToString();
+    }
     void CaptureKeyframe()
     {
         // Pose PCA — usate per la riproiezione RGB (world -> spazio colore),
@@ -98,6 +111,8 @@ public class KeyFrameManager : MonoBehaviour
         if (reproj == null || reproj.Length == 0) return;
 
         Matrix4x4 reprojMatrix = reproj[0]; // matrice di reprojection eye sinistro (solo debug/riferimento)
+
+        //debugText.text = "Matrix saved: " + reprojMatrix.ToString();
 
         // Inizializza i render target RGB dalle dimensioni della camera texture
         if (target == null)
@@ -124,7 +139,6 @@ public class KeyFrameManager : MonoBehaviour
         Texture2D rgb = SaveFrame(target);
         Texture2D rgbRight = SaveFrame(rightTarget);
         Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
-        Texture2D linearDepth = SaveDepthFrameLinear(depthTex);
 
         // Salva la depth registrata (riproiettata nello spazio della camera RGB)
         var intrinsics = passthroughCameraLeft.Intrinsics;
@@ -146,7 +160,6 @@ public class KeyFrameManager : MonoBehaviour
             rgb = rgb,
             rgbRight = rgbRight,
             rawDepth = rawDepth,
-            linearDepth = linearDepth,
             position = pose.position,
             rotation = pose.rotation,
             RightCamPosition = rightPose.position,
@@ -161,6 +174,7 @@ public class KeyFrameManager : MonoBehaviour
             depthCamPosition = depthCamPosition,
             depthCamRotation = depthCamRotation
         };
+
 
         SaveKeyframeToDisk(kf, _keyframeCount++);
 
@@ -188,10 +202,6 @@ public class KeyFrameManager : MonoBehaviour
         // Depth raw, non registrata, risoluzione nativa depth camera, float EXR.
         byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
-
-        // Depth linearizzata, non registrata, risoluzione nativa depth camera, float EXR.
-        byte[] linearDepthBytes = kf.linearDepth.EncodeToEXR();
-        System.IO.File.WriteAllBytes($"{dir}/linearDepth.exr", linearDepthBytes);
 
         // Pose PCA sinistra/destra (world/tracking space) — usate per
         // riproiettare i punti depth unprojected nello spazio camera RGB server-side.
@@ -234,7 +244,7 @@ public class KeyFrameManager : MonoBehaviour
 
         // Matrice di reprojection della eye camera — tenuta solo per debug/riferimento.
         // NON valida per allineare la depth al frame RGB della PCA (vedi nota in CaptureKeyframe).
-        string reproj = JsonUtility.ToJson(kf.reprojectionMatrix);
+        string reproj = JsonUtility.ToJson(new Matrix4x4Data(kf.reprojectionMatrix));
 
         // zBufferParams (per la linearizzazione offline dei valori di depth raw)
         string zbuf = JsonUtility.ToJson(new ZBufferParamsData
@@ -322,34 +332,6 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(rt);
         return tex;
     }
-
-    Texture2D SaveDepthFrameLinear(Texture depthTexArray)
-    {
-        // Deve passare attraverso lo shader di array-sampling (DepthLinearExport):
-        // un Graphics.Blit semplice usa lo shader sampler2D di default e non
-        // può leggere una slice di Texture2DArray, dando un risultato
-        // piatto/uniforme ("monocolore").
-        if (linearDepthMaterial == null)
-        {
-            Debug.LogError("linearDepthMaterial (Custom/DepthLinearExport) is not assigned — linearDepth.exr would be monochrome.");
-            return null;
-        }
-
-        // Usa un target float a 4 canali (come il path di preview BGRA32 funzionante):
-        // render target RFloat a canale singolo + ReadPixels sono inaffidabili su Quest.
-        RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.ARGBFloat);
-        rt.Create();
-        Graphics.Blit(depthTexArray, rt, linearDepthMaterial);
-
-        Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
-        RenderTexture.active = rt;
-        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-        tex.Apply();
-        RenderTexture.active = null;
-
-        Destroy(rt);
-        return tex;
-    }
 }
 
 // Bundle in memoria per un singolo keyframe catturato, prima della serializzazione su disco.
@@ -359,7 +341,6 @@ public struct CapturedKeyframe
     public Texture2D rgb;
     public Texture2D rgbRight;
     public Texture2D rawDepth;
-    public Texture2D linearDepth;
     public Vector3 position;          // posizione camera PCA sinistra
     public Vector3 RightCamPosition;  // posizione camera PCA destra
     public Quaternion rotation;       // rotazione camera PCA sinistra
@@ -402,6 +383,23 @@ struct IntrinsicsData
 struct ZBufferParamsData
 {
     public float x, y, z, w;
+}
+
+[System.Serializable]
+struct Matrix4x4Data
+{
+    public float m00, m01, m02, m03;
+    public float m10, m11, m12, m13;
+    public float m20, m21, m22, m23;
+    public float m30, m31, m32, m33;
+
+    public Matrix4x4Data(Matrix4x4 m)
+    {
+        m00 = m.m00; m01 = m.m01; m02 = m.m02; m03 = m.m03;
+        m10 = m.m10; m11 = m.m11; m12 = m.m12; m13 = m.m13;
+        m20 = m.m20; m21 = m.m21; m22 = m.m22; m23 = m.m23;
+        m30 = m.m30; m31 = m.m31; m32 = m.m32; m33 = m.m33;
+    }
 }
 
 [System.Serializable]

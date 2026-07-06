@@ -36,8 +36,8 @@ Shader "Custom/DepthRegistration"
             // rawDepth=1 → z_eye=0.20m (near plane), rawDepth→0 → z_eye→∞ (far)
             float LinearizeDepth(float rawDepth)
             {
-                return _EnvironmentDepthZBufferParams.x /
-                       (_EnvironmentDepthZBufferParams.y * rawDepth);
+                float ndc = rawDepth * 2.0 - 1.0;
+                return _EnvironmentDepthZBufferParams.x / (ndc + _EnvironmentDepthZBufferParams.y);
             }
 
             float frag(v2f_img i) : SV_Target

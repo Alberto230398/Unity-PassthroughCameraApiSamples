@@ -1165,7 +1165,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &987431863
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1552,7 +1552,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1705544976
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1642,8 +1642,8 @@ MonoBehaviour:
   passthroughCameraRight: {fileID: 964992456}
   leftCamera: {fileID: 499068566}
   rawDepthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
-  linearDepthMaterial: {fileID: 2100000, guid: b50a8aa39b0a54083973b3150a6ea92c, type: 2}
   environmentDepthManager: {fileID: 689678562}
+  debugText: {fileID: 721019565}
 --- !u!4 &2039053024
 Transform:
   m_ObjectHideFlags: 0
@@ -1756,8 +1756,16 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 625871839886894782, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 880.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 625871839886894782, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 394
+      value: 392
+      objectReference: {fileID: 0}
+    - target: {fileID: 625871839886894782, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -62.9
       objectReference: {fileID: 0}
     - target: {fileID: 1297064132876453374, guid: d8d82b0f3f886914d96a688376930b08, type: 3}
       propertyPath: _enableDynamicResolution
