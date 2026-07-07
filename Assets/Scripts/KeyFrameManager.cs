@@ -29,6 +29,7 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] Camera leftCamera;
     [SerializeField] Material rawDepthMaterial;         // Shader DepthRawCopy: estrae la slice 0 del Texture2DArray senza modifiche
     [SerializeField] Material alignedDepthMaterial;     // Allinea la depth sul frame RGB della PCA
+    [SerializeField] Material depthColorMaterial;       // Shader DepthColorReprojection: depth -> 3D -> colore RGB (point cloud colorato in layout depth)
     [SerializeField] EnvironmentDepthManager environmentDepthManager; // Gate della cattura su IsDepthAvailable
     [SerializeField] Text debugText;
 
@@ -148,6 +149,9 @@ public class KeyFrameManager : MonoBehaviour
     depthTex, reprojMatrix,
     pose.position, pose.rotation,
     passthroughCameraLeft.Intrinsics, zParams);
+        Texture2D depthColored = SaveDepthColored(
+    depthTex, target, reprojMatrix,
+    pose.position, pose.rotation, passthroughCameraLeft.Intrinsics);
 
         // Salva la depth registrata (riproiettata nello spazio della camera RGB)
         var intrinsics = passthroughCameraLeft.Intrinsics;
@@ -173,6 +177,7 @@ public class KeyFrameManager : MonoBehaviour
             rgbRight = rgbRight,
             rawDepth = rawDepth,
             alignedDepth = alignedDepth,
+            depthColored = depthColored,
             position = pose.position,
             rotation = pose.rotation,
             RightCamPosition = rightPose.position,
@@ -197,6 +202,7 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(kf.rgbRight);
         Destroy(kf.rawDepth);
         Destroy(kf.alignedDepth);
+        Destroy(kf.depthColored);
         Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
     }
 
@@ -220,6 +226,13 @@ public class KeyFrameManager : MonoBehaviour
         // Depth allineata, registrata, risoluzione frame RGB, float EXR.
         byte[] alignedDepthBytes = kf.alignedDepth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/alignedDepth.exr", alignedDepthBytes);
+
+        // Point cloud colorato (depth -> 3D -> colore RGB), risoluzione depth, PNG.
+        if (kf.depthColored != null)
+        {
+            byte[] coloredBytes = kf.depthColored.EncodeToPNG();
+            System.IO.File.WriteAllBytes($"{dir}/Colored.png", coloredBytes);
+        }
 
         // Pose PCA sinistra/destra (world/tracking space) — usate per
         // riproiettare i punti depth unprojected nello spazio camera RGB server-side.
@@ -377,6 +390,40 @@ public class KeyFrameManager : MonoBehaviour
     Destroy(rt);
     return tex;
 }
+
+    /// <summary>
+    /// Forward warp: depth -> 3D world -> colore RGB. Per ogni pixel della depth
+    /// ricostruisce il punto 3D con l'inversa della reproj matrix, lo proietta nella
+    /// camera RGB e ne campiona il colore. Output = point cloud colorato in layout
+    /// depth (risoluzione depth camera). Usa lo shader Custom/DepthColorReprojection.
+    /// </summary>
+    Texture2D SaveDepthColored(Texture depthTexArray, Texture rgbTex, Matrix4x4 reprojMatrix,
+        Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr)
+    {
+        if (depthColorMaterial == null) { Debug.LogError("depthColorMaterial not assigned"); return null; }
+
+        // Inversa: mappa il clip-space della depth -> world. Precalcolata qui (niente inverse in shader).
+        depthColorMaterial.SetMatrix("_InvReprojMatrix", reprojMatrix.inverse);
+        depthColorMaterial.SetVector("_RGBPosition", rgbPos);
+        depthColorMaterial.SetMatrix("_RGBRotation", Matrix4x4.Rotate(rgbRot));
+        depthColorMaterial.SetVector("_FocalLength", new Vector4(intr.FocalLength.x, intr.FocalLength.y));
+        depthColorMaterial.SetVector("_PrincipalPoint", new Vector4(intr.PrincipalPoint.x, intr.PrincipalPoint.y));
+
+        var res = intr.SensorResolution;
+        depthColorMaterial.SetVector("_CropRegion", new Vector4(0, 0, res.x, res.y));
+        depthColorMaterial.SetTexture("_RGBTex", rgbTex);
+
+        RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.ARGB32);
+        rt.Create();
+        Graphics.Blit(depthTexArray, rt, depthColorMaterial);
+        Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
+        RenderTexture.active = rt;
+        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        tex.Apply();
+        RenderTexture.active = null;
+        Destroy(rt);
+        return tex;
+    }
 }
 
 // Bundle in memoria per un singolo keyframe catturato, prima della serializzazione su disco.
@@ -387,6 +434,7 @@ public struct CapturedKeyframe
     public Texture2D rgbRight;
     public Texture2D rawDepth;
     public Texture2D alignedDepth;
+    public Texture2D depthColored;    // point cloud colorato: depth -> 3D -> colore RGB
     public Vector3 position;          // posizione camera PCA sinistra
     public Vector3 RightCamPosition;  // posizione camera PCA destra
     public Quaternion rotation;       // rotazione camera PCA sinistra

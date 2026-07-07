@@ -54,7 +54,7 @@ Shader "Custom/AlignedDepthExport"
                 return _EnvironmentDepthZBufferParams.x / (ndc + _EnvironmentDepthZBufferParams.y);
             }
 
-            float frag(v2f i) : SV_Target
+            float4 frag(v2f i) : SV_Target
             {
                 // Map image UV -> sensor pixel coords using crop region.
                 // Camera runs at 1280x960 on a 1280x1280 sensor: cropY=160, cropH=960.
@@ -93,16 +93,16 @@ Shader "Custom/AlignedDepthExport"
 
                     if (depthUV.x < 0.0 || depthUV.x > 1.0 ||
                         depthUV.y < 0.0 || depthUV.y > 1.0)
-                        return 0.0;
+                        return float4(0.0, 0.0, 0.0, 1.0);
 
                     float rawDepth = UNITY_SAMPLE_TEX2DARRAY(_MainTex, float3(depthUV, 0)).r;
-                    if (rawDepth < 0.001) return 0.0; // no depth data at this pixel
+                    if (rawDepth < 0.001) return float4(0.0, 0.0, 0.0, 1.0); // no depth data at this pixel
                     float linZ = LinearizeDepth(rawDepth);
 
                     float k = zx / linZ - zy;
                     float denom = B.z - k * B.w;
                     if (abs(denom) < 1e-5)
-                        return 0.0;
+                        return float4(0.0, 0.0, 0.0, 1.0);
 
                     t = (k * A.w - A.z) / denom;
                 }
@@ -112,10 +112,13 @@ Shader "Custom/AlignedDepthExport"
                 float2 finalUV = finalClip.xy / finalClip.w * 0.5 + 0.5;
                 if (finalUV.x < 0.0 || finalUV.x > 1.0 ||
                     finalUV.y < 0.0 || finalUV.y > 1.0)
-                    return 0.0;
+                    return float4(0.0, 0.0, 0.0, 1.0);
 
-                // t is the z-depth in RGB camera space (since d_cam.z = 1.0)
-                return max(t, 0.0);
+                // t is the z-depth in RGB camera space (since d_cam.z = 1.0).
+                // Scritto su RGB (grayscale) come una depth map normale; il valore
+                // metrico in metri resta leggibile da qualsiasi canale.
+                float depth = max(t, 0.0);
+                return float4(depth, depth, depth, 1.0);
             }
             ENDHLSL
         }
