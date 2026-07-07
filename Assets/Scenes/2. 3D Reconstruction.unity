@@ -1641,7 +1641,8 @@ MonoBehaviour:
   passthroughCameraLeft: {fileID: 1748868315344937867}
   passthroughCameraRight: {fileID: 964992456}
   leftCamera: {fileID: 499068566}
-  rawDepthMaterial: {fileID: 2100000, guid: 3e70096eaa4ac86489850919b74d926a, type: 2}
+  rawDepthMaterial: {fileID: 2100000, guid: b50a8aa39b0a54083973b3150a6ea92c, type: 2}
+  alignedDepthMaterial: {fileID: 2100000, guid: 1e576506abde8424aad3a94365f5f3cc, type: 2}
   environmentDepthManager: {fileID: 689678562}
   debugText: {fileID: 721019565}
 --- !u!4 &2039053024
