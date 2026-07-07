@@ -96,7 +96,27 @@ public class KeyFrameManager : MonoBehaviour
         // NON per l'unprojection della depth (il sensore depth ha pose propria, vedi sotto).
         var pose = passthroughCameraLeft.GetCameraPose();
         var rightPose = passthroughCameraRight.GetCameraPose();
+        if (target == null)
+        {
+            var camTex = passthroughCameraLeft.GetTexture();
+            if (camTex == null) return;
+            target = new RenderTexture(camTex.width, camTex.height, 0, RenderTextureFormat.BGRA32);
+            target.Create();
+        }
+
+        if (rightTarget == null)
+        {
+            var camTex = passthroughCameraRight.GetTexture();
+            if (camTex == null) return;
+            rightTarget = new RenderTexture(camTex.width, camTex.height, 0, RenderTextureFormat.BGRA32);
+            rightTarget.Create();
+        }
+
         var depthTex = Shader.GetGlobalTexture("_EnvironmentDepthTexture");
+        // Blit dei frame camera correnti sui render target
+        Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
+        Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
+
         Debug.Log("----------------UNITY TIME WHEN SAVING DEPTH TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
 
         if (depthTex == null || !passthroughCameraLeft.IsPlaying) return;
@@ -116,27 +136,9 @@ public class KeyFrameManager : MonoBehaviour
         //debugText.text = "Matrix saved: " + reprojMatrix.ToString();
 
         // Inizializza i render target RGB dalle dimensioni della camera texture
-        if (target == null)
-        {
-            var camTex = passthroughCameraLeft.GetTexture();
-            if (camTex == null) return;
-            target = new RenderTexture(camTex.width, camTex.height, 0, RenderTextureFormat.BGRA32);
-            target.Create();
-        }
-
-        if (rightTarget == null)
-        {
-            var camTex = passthroughCameraRight.GetTexture();
-            if (camTex == null) return;
-            rightTarget = new RenderTexture(camTex.width, camTex.height, 0, RenderTextureFormat.BGRA32);
-            rightTarget.Create();
-        }
-
+        
         Debug.Log("----------------PCA TIME WHEN SAVING RGB TEXTURE:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
         Debug.Log("----------------UNITY TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
-        // Blit dei frame camera correnti sui render target
-        Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
-        Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
 
         // Salva i frame RGB
         Texture2D rgb = SaveFrame(target);
