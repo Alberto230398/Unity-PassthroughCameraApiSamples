@@ -49,7 +49,7 @@ public class KeyFrameManager : MonoBehaviour
     void Update()
     {
         Matrix4x4[] reprojMatrix = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
-        debugText.text = "Matrix saved: " + reprojMatrix[1].ToString();
+        //debugText.text = "Matrix saved: " + reprojMatrix[1].ToString();
         // La depth non è prodotta nei primi frame dopo l'attivazione del depth
         // manager; catturare prima produce una texture tutta-lontana (raw=1.0).
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
@@ -97,6 +97,7 @@ public class KeyFrameManager : MonoBehaviour
         var pose = passthroughCameraLeft.GetCameraPose();
         var rightPose = passthroughCameraRight.GetCameraPose();
         var depthTex = Shader.GetGlobalTexture("_EnvironmentDepthTexture");
+        Debug.Log("----------------UNITY TIME WHEN SAVING DEPTH TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
 
         if (depthTex == null || !passthroughCameraLeft.IsPlaying) return;
 
@@ -131,6 +132,8 @@ public class KeyFrameManager : MonoBehaviour
             rightTarget.Create();
         }
 
+        Debug.Log("----------------PCA TIME WHEN SAVING RGB TEXTURE:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
+        Debug.Log("----------------UNITY TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
         // Blit dei frame camera correnti sui render target
         Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
         Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
@@ -145,6 +148,9 @@ public class KeyFrameManager : MonoBehaviour
         var rightIntrinsics = passthroughCameraRight.Intrinsics;
 
         var depthFrameDesc = Utils.GetEnvironmentDepthFrameDesc(0);
+
+        string depthDebug = $"valid={depthFrameDesc.isValid} t={depthFrameDesc.predictedDisplayTime} pos={depthFrameDesc.createPoseLocation} timestamp = {Time.realtimeSinceStartupAsDouble}";
+        debugText.text = depthDebug;
 
         // Pose propria del sensore depth al momento della creazione del frame —
         // NECESSARIA per l'unprojection depth->world corretta. Non riusare la
@@ -175,7 +181,8 @@ public class KeyFrameManager : MonoBehaviour
             depthCamRotation = depthCamRotation
         };
 
-
+        Debug.Log("----------------PCA TIME WHEN SAVING KEYFRAME:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
+        Debug.Log("----------------UNITY TIME WHEN SAVING KEYFRAME:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
         SaveKeyframeToDisk(kf, _keyframeCount++);
 
         // Distrugge subito le texture — sono già su disco, nessun motivo di tenerle in RAM.
