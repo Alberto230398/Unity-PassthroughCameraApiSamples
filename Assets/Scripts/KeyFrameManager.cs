@@ -384,7 +384,7 @@ public class KeyFrameManager : MonoBehaviour
     var res = intr.SensorResolution;
     alignedDepthMaterial.SetVector("_CropRegion", new Vector4(0, 0, res.x, res.y));
 
-    RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.ARGBFloat);
+    RenderTexture rt = new RenderTexture(target.width, target.height, 0, RenderTextureFormat.ARGBFloat);
     rt.Create();
     Graphics.Blit(depthTexArray, rt, alignedDepthMaterial);
     Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
