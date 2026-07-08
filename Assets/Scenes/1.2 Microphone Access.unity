@@ -512,6 +512,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1338705052}
   - component: {fileID: 1338705053}
+  - component: {fileID: 1338705054}
   m_Layer: 0
   m_Name: MicManager
   m_TagString: Untagged
@@ -548,6 +549,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   audioSource: {fileID: 1700810485}
   textMeshProUGUI: {fileID: 1384944777}
+--- !u!114 &1338705054
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1338705051}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e9557a600773f94a85833cd77d41227, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!1 &1384944776
 GameObject:
   m_ObjectHideFlags: 0
@@ -613,8 +626,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 18.91
+  m_fontSizeBase: 18.91
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18

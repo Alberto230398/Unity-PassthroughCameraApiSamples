@@ -19,8 +19,7 @@ public class MicManager : MonoBehaviour
         AudioClip clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
         audioSource.PlayOneShot(clip);
 
-        if (clip != null)
-            textMeshProUGUI.text = "Clip esistente";
+        textMeshProUGUI.text = micList;
     }
 
     // Update is called once per frame
