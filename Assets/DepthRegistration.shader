@@ -86,7 +86,7 @@ Shader "Custom/AlignedDepthExport"
                 float t = 1.0; // initial guess: 1 meter
 
                 [unroll]
-                for (int iter = 0; iter < 4; iter++)
+                for (int iter = 0; iter < 7; iter++)
                 {
                     float4 clip = A + t * B;
                     float2 depthUV = clip.xy / clip.w * 0.5 + 0.5;
