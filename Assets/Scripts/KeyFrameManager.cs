@@ -12,6 +12,13 @@ using System.Runtime.CompilerServices;
 // Cattura keyframe (RGB stereo + depth raw + pose/intrinseci) su disco per
 // ricostruzione offline/server-side (unproject deterministico -> init Gaussiane).
 // Nessuna fusion/meshing on-device: questo script è solo un esportatore dati.
+//
+// SINCRONIA depth<->RGB: la cattura è agganciata a Application.onBeforeRender con
+// [BeforeRenderOrder(100)]. EnvironmentDepthManager.OnBeforeRender gira a ordine 0
+// (default), quindi quando CaptureKeyframe parte i global dello shader
+// (_EnvironmentDepthTexture / _EnvironmentDepthReprojectionMatrices /
+// _EnvironmentDepthZBufferParams) sono GIÀ stati scritti col frame corrente.
+// Nessuna race, nessun WaitForSeconds: leggiamo la depth più fresca del frame.
 public class KeyFrameManager : MonoBehaviour
 {
     // Pose della camera PCA sinistra all'ultimo keyframe catturato, usata per
@@ -40,6 +47,12 @@ public class KeyFrameManager : MonoBehaviour
 
     private bool _firstKeyframeCaptured = false;
 
+    // Id nativo della depth texture dell'ultimo keyframe salvato: evita di
+    // riaccoppiare due volte lo stesso frame depth e garantisce che ogni
+    // keyframe usi un frame depth NUOVO. Init a MaxValue per non collidere col
+    // primo id valido.
+    private uint _lastCapturedDepthTexId = uint.MaxValue;
+
     void Awake()
     {
         // Risolve automaticamente il depth manager se non wired in Inspector,
@@ -48,75 +61,78 @@ public class KeyFrameManager : MonoBehaviour
             environmentDepthManager = FindFirstObjectByType<EnvironmentDepthManager>();
     }
 
-    void Update()
+    void OnEnable()
     {
-        Matrix4x4[] reprojMatrix = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
-        //debugText.text = "Matrix saved: " + reprojMatrix[1].ToString();
+        // Ci agganciamo al render loop invece che a Update: vedi nota in testa.
+        Application.onBeforeRender += CaptureKeyframe;
+    }
+
+    void OnDisable()
+    {
+        Application.onBeforeRender -= CaptureKeyframe;
+    }
+
+    // Ordine 100 > 0 del manager Meta -> giriamo SEMPRE dopo che i global depth
+    // sono stati aggiornati col frame corrente.
+    [BeforeRenderOrder(100)]
+    void CaptureKeyframe()
+    {
         // La depth non è prodotta nei primi frame dopo l'attivazione del depth
         // manager; catturare prima produce una texture tutta-lontana (raw=1.0).
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
+        if (passthroughCameraLeft == null || !passthroughCameraLeft.IsPlaying) return;
+
+        // Gate #1 — frame depth NUOVO. Se l'id non è cambiato dall'ultimo
+        // keyframe la depth global è la stessa: non accoppiarla a un RGB nuovo.
+        uint depthTexId = 0;
+        if (!Utils.GetEnvironmentDepthTextureId(ref depthTexId)) return;
+        if (depthTexId == _lastCapturedDepthTexId) return;
 
         var pose = passthroughCameraLeft.GetCameraPose();
 
         // Cattura il primo keyframe appena la depth diventa disponibile.
         if (!_firstKeyframeCaptured)
         {
-            CaptureKeyframe();
+            DoCaptureKeyframe(pose, depthTexId);
             _firstKeyframeCaptured = true;
             _lastKeyframePosition = pose.position;
             _lastKeyframeRotation = pose.rotation;
             return;
         }
 
-        // Gating per pose-delta (non a intervalli fissi): minimizza frame
+        // Gate #2 — pose-delta (non a intervalli fissi): minimizza frame
         // ridondanti nel training set inviato al server di ricostruzione.
         float translation = Vector3.Distance(pose.position, _lastKeyframePosition);
         float rotation = Quaternion.Angle(pose.rotation, _lastKeyframeRotation);
+        if (translation <= translationThreshold && rotation <= rotationThreshold) return;
 
-        if (translation > translationThreshold || rotation > rotationThreshold)
-        {
-            CaptureKeyframe();
-            _lastKeyframePosition = pose.position;
-            _lastKeyframeRotation = pose.rotation;
-        }
+        DoCaptureKeyframe(pose, depthTexId);
+        _lastKeyframePosition = pose.position;
+        _lastKeyframeRotation = pose.rotation;
     }
 
-    void Start()
-    {
-        //StartCoroutine(writeMatrix());
-    }
-
-    IEnumerator writeMatrix()
-    {
-        yield return new WaitForSeconds(3f);
-        Matrix4x4 reprojMatrix = Shader.GetGlobalMatrix("_EnvironmentDepthReprojectionMatrices");
-        debugText.text = "Matrix saved: " + reprojMatrix.ToString();
-    }
-    void CaptureKeyframe()
+    void DoCaptureKeyframe(Pose pose, uint depthTexId)
     {
         // Pose PCA — usate per la riproiezione RGB (world -> spazio colore),
-        // NON per l'unprojection della depth (il sensore depth ha pose propria, vedi sotto).
-        var pose = passthroughCameraLeft.GetCameraPose();
+        // NON per l'unprojection della depth (il sensore depth ha pose propria,
+        // già bakata nella reprojection matrix, vedi sotto).
         var rightPose = passthroughCameraRight.GetCameraPose();
+
+        // TUTTI i dati depth dai GLOBAL dello shader (nessuna chiamata a Utils
+        // per la desc): sono scritti atomicamente dal manager Meta nello stesso
+        // OnBeforeRender, quindi mutuamente coerenti col frame corrente.
         var depthTex = Shader.GetGlobalTexture("_EnvironmentDepthTexture");
-        
-        Debug.Log("----------------UNITY TIME WHEN SAVING DEPTH TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
+        if (depthTex == null) return;
 
-        if (depthTex == null || !passthroughCameraLeft.IsPlaying) return;
-
-        // NOTA: _EnvironmentDepthReprojectionMatrices/_EnvironmentDepthZBufferParams
-        // sono calibrate per la eye render camera (occlusion in-headset),
-        // NON per la PCA. Tenute solo per debug/riferimento — non usare
-        // reprojMatrix per allineare la depth al frame RGB della PCA; quella
-        // registrazione va ricostruita server-side da FOV+pose (vedi sotto).
         Matrix4x4[] reproj = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
         Vector4 zParams = Shader.GetGlobalVector("_EnvironmentDepthZBufferParams");
-
         if (reproj == null || reproj.Length == 0) return;
 
-        Matrix4x4 reprojMatrix = reproj[0]; // matrice di reprojection eye sinistro (solo debug/riferimento)
-
-        //debugText.text = "Matrix saved: " + reprojMatrix.ToString();
+        // Matrice world -> clip della DEPTH camera (fov del sensore + createPose
+        // del sensore già inclusi nel blocco proj*view). La sua inversa è
+        // l'unprojection depth->world autorevole per il server. NON è la eye
+        // camera: è calibrata sul sensore depth.
+        Matrix4x4 depthWorldToClip = reproj[0];
 
         // Inizializza i render target RGB dalle dimensioni della camera texture
         if (target == null)
@@ -136,40 +152,28 @@ public class KeyFrameManager : MonoBehaviour
         }
 
         Debug.Log("----------------PCA TIME WHEN SAVING RGB TEXTURE:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
-        Debug.Log("----------------UNITY TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
+        Debug.Log("----------------SYSTEM TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
         // Blit dei frame camera correnti sui render target
         Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
         Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
 
-        // Salva i frame RGB
+        // Salva i frame RGB + depth (raw, allineata, colorata)
         Texture2D rgb = SaveFrame(target);
         Texture2D rgbRight = SaveFrame(rightTarget);
         Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
         Texture2D alignedDepth = SaveAlignedDepthFrame(
-    depthTex, reprojMatrix,
-    pose.position, pose.rotation,
-    passthroughCameraLeft.Intrinsics, zParams);
+            depthTex, depthWorldToClip,
+            pose.position, pose.rotation,
+            passthroughCameraLeft.Intrinsics, zParams);
         Texture2D depthColored = SaveDepthColored(
-    depthTex, target, reprojMatrix,
-    pose.position, pose.rotation, passthroughCameraLeft.Intrinsics);
+            depthTex, target, depthWorldToClip,
+            pose.position, pose.rotation, passthroughCameraLeft.Intrinsics);
 
-        // Salva la depth registrata (riproiettata nello spazio della camera RGB)
         var intrinsics = passthroughCameraLeft.Intrinsics;
         var rightIntrinsics = passthroughCameraRight.Intrinsics;
 
-        var depthFrameDesc = Utils.GetEnvironmentDepthFrameDesc(0);
-
-        string depthDebug = $"valid={depthFrameDesc.isValid} t={depthFrameDesc.predictedDisplayTime} pos={depthFrameDesc.createPoseLocation} timestamp = {Time.realtimeSinceStartupAsDouble}";
-        debugText.text = depthDebug;
-
-        // Pose propria del sensore depth al momento della creazione del frame —
-        // NECESSARIA per l'unprojection depth->world corretta. Non riusare la
-        // pose PCA: depth camera e PCA sono sensori/extrinsics fisici diversi.
-        // CreatePoseLocation restituisce la posizione; si assume che la
-        // rotazione sia esposta allo stesso modo — verificare firma esatta
-        // sulla versione SDK in uso.
-        Vector3 depthCamPosition = depthFrameDesc.createPoseLocation;
-        Vector4 depthCamRotation = depthFrameDesc.createPoseRotation;
+        if (debugText != null)
+            debugText.text = $"kf={_keyframeCount} depthTexId={depthTexId} t={Time.realtimeSinceStartupAsDouble:F3}";
 
         var kf = new CapturedKeyframe
         {
@@ -185,17 +189,17 @@ public class KeyFrameManager : MonoBehaviour
             timestamp = passthroughCameraLeft.Timestamp,
             intrinsics = intrinsics,
             rightIntrinsics = rightIntrinsics,
-            reprojectionMatrix = reprojMatrix,
+            reprojectionMatrix = depthWorldToClip,
             zBufferParams = zParams,
-            depthResolution = new Vector2(depthTex.width, depthTex.height),
-            depthData = depthFrameDesc,
-            depthCamPosition = depthCamPosition,
-            depthCamRotation = depthCamRotation
+            depthResolution = new Vector2(depthTex.width, depthTex.height)
         };
 
         Debug.Log("----------------PCA TIME WHEN SAVING KEYFRAME:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
         Debug.Log("----------------UNITY TIME WHEN SAVING KEYFRAME:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
         SaveKeyframeToDisk(kf, _keyframeCount++);
+
+        // Marca il frame depth come consumato: il prossimo keyframe userà un id diverso.
+        _lastCapturedDepthTexId = depthTexId;
 
         // Distrugge subito le texture — sono già su disco, nessun motivo di tenerle in RAM.
         Destroy(kf.rgb);
@@ -203,7 +207,7 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(kf.rawDepth);
         Destroy(kf.alignedDepth);
         Destroy(kf.depthColored);
-        Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depth registered at {target.width}x{target.height}");
+        Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depthTexId: {depthTexId}");
     }
 
     void SaveKeyframeToDisk(CapturedKeyframe kf, int index)
@@ -250,14 +254,6 @@ public class KeyFrameManager : MonoBehaviour
             timestamp = kf.timestamp.ToString("HH:mm:ss:fff")
         });
 
-        // Pose della depth camera — usata per l'unprojection depth->world server-side.
-        // Posizione/rotazione da EnvironmentDepthFrameDesc, NON dalla PCA.
-        string depthCamPose = JsonUtility.ToJson(new DepthCamPoseData
-        {
-            px = kf.depthCamPosition.x, py = kf.depthCamPosition.y, pz = kf.depthCamPosition.z,
-            rx = kf.depthCamRotation.x, ry = kf.depthCamRotation.y, rz = kf.depthCamRotation.z, rw = kf.depthCamRotation.w
-        });
-
         // Intrinseci RGB
         string RGBIntrinsics = JsonUtility.ToJson(new IntrinsicsData
         {
@@ -273,9 +269,12 @@ public class KeyFrameManager : MonoBehaviour
             SensorResolution = kf.rightIntrinsics.SensorResolution
         });
 
-        // Matrice di reprojection della eye camera — tenuta solo per debug/riferimento.
-        // NON valida per allineare la depth al frame RGB della PCA (vedi nota in CaptureKeyframe).
+        // Matrice di reprojection della DEPTH camera (world -> clip): fov + pose
+        // del sensore depth già bakati. Il server unprojetta la depth con la sua
+        // inversa (salvata sotto). Sostituisce sia la vecchia reproj "eye" sia
+        // DepthCamPose.json (la pose del sensore è dentro questa matrice).
         string reproj = JsonUtility.ToJson(new Matrix4x4Data(kf.reprojectionMatrix));
+        string reprojInverse = JsonUtility.ToJson(new Matrix4x4Data(kf.reprojectionMatrix.inverse));
 
         // zBufferParams (per la linearizzazione offline dei valori di depth raw)
         string zbuf = JsonUtility.ToJson(new ZBufferParamsData
@@ -286,19 +285,12 @@ public class KeyFrameManager : MonoBehaviour
             w = kf.zBufferParams.w
         });
 
-        // Risoluzione nativa della depth texture + FOV — usate server-side per
-        // costruire la matrice di proiezione della depth camera (step di unprojection).
+        // Risoluzione nativa della depth texture. FOV/near-far non servono più
+        // separati: sono codificati nella reprojection matrix qui sopra.
         string depthMeta = JsonUtility.ToJson(new DepthMetaData
         {
             width = kf.depthResolution.x,
-            height = kf.depthResolution.y,
-            FOVleft = kf.depthData.fovLeftAngle,
-            FOVright = kf.depthData.fovRightAngle,
-            nearZ = kf.depthData.nearZ,
-            farZ = kf.depthData.farZ,
-            minDepth = kf.depthData.minDepth,
-            maxDepth = kf.depthData.maxDepth,
-            createTime = kf.depthData.createTime
+            height = kf.depthResolution.y
         });
 
         var LeftPose = passthroughCameraLeft.GetCameraPose();
@@ -308,7 +300,6 @@ public class KeyFrameManager : MonoBehaviour
 
         System.IO.File.WriteAllText($"{dir}/LeftCamPose.json", pose);
         System.IO.File.WriteAllText($"{dir}/RightCamPose.json", rightPose);
-        System.IO.File.WriteAllText($"{dir}/DepthCamPose.json", depthCamPose);
         System.IO.File.WriteAllText($"{dir}/LeftIntrinsics.json", RGBIntrinsics);
         System.IO.File.WriteAllText($"{dir}/RightIntrinsics.json", RGBRightInstrinsics);
 
@@ -316,6 +307,7 @@ public class KeyFrameManager : MonoBehaviour
         CamDistance.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         System.IO.File.WriteAllText($"{dir}/reprojection.json", reproj);
+        System.IO.File.WriteAllText($"{dir}/reprojection_inverse.json", reprojInverse);
         System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
         System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
     }
@@ -334,7 +326,7 @@ public class KeyFrameManager : MonoBehaviour
     /// <summary>
     /// Salva la depth raw a risoluzione nativa della depth camera (non
     /// registrata, non allineata all'RGB). Registrazione/allineamento
-    /// rimandati al server usando FOV depth + pose depth camera + intrinseci/pose PCA.
+    /// rimandati al server usando la reprojection matrix + pose/intrinseci PCA.
     /// </summary>
     Texture2D SaveDepthFrameRaw(Texture depthTexArray)
     {
@@ -366,30 +358,30 @@ public class KeyFrameManager : MonoBehaviour
 
     Texture2D SaveAlignedDepthFrame(Texture depthTexArray, Matrix4x4 reprojMatrix,
     Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr, Vector4 zParams)
-{
-    if (alignedDepthMaterial == null) { Debug.LogError("alignedDepthMaterial not assigned"); return null; }
+    {
+        if (alignedDepthMaterial == null) { Debug.LogError("alignedDepthMaterial not assigned"); return null; }
 
-    alignedDepthMaterial.SetMatrix("_ReprojMatrix", reprojMatrix);
-    alignedDepthMaterial.SetVector("_RGBPosition", rgbPos);
-    alignedDepthMaterial.SetMatrix("_RGBRotation", Matrix4x4.Rotate(rgbRot));
-    alignedDepthMaterial.SetVector("_FocalLength", new Vector4(intr.FocalLength.x, intr.FocalLength.y));
-    alignedDepthMaterial.SetVector("_PrincipalPoint", new Vector4(intr.PrincipalPoint.x, intr.PrincipalPoint.y));
-    alignedDepthMaterial.SetVector("_EnvironmentDepthZBufferParams", zParams);
+        alignedDepthMaterial.SetMatrix("_ReprojMatrix", reprojMatrix);
+        alignedDepthMaterial.SetVector("_RGBPosition", rgbPos);
+        alignedDepthMaterial.SetMatrix("_RGBRotation", Matrix4x4.Rotate(rgbRot));
+        alignedDepthMaterial.SetVector("_FocalLength", new Vector4(intr.FocalLength.x, intr.FocalLength.y));
+        alignedDepthMaterial.SetVector("_PrincipalPoint", new Vector4(intr.PrincipalPoint.x, intr.PrincipalPoint.y));
+        alignedDepthMaterial.SetVector("_EnvironmentDepthZBufferParams", zParams);
 
-    var res = intr.SensorResolution;
-    alignedDepthMaterial.SetVector("_CropRegion", new Vector4(0, 0, res.x, res.y));
+        var res = intr.SensorResolution;
+        alignedDepthMaterial.SetVector("_CropRegion", new Vector4(0, 0, res.x, res.y));
 
-    RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.ARGBFloat);
-    rt.Create();
-    Graphics.Blit(depthTexArray, rt, alignedDepthMaterial);
-    Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
-    RenderTexture.active = rt;
-    tex.ReadPixels(new Rect(0,0,rt.width,rt.height), 0, 0);
-    tex.Apply();
-    RenderTexture.active = null;
-    Destroy(rt);
-    return tex;
-}
+        RenderTexture rt = new RenderTexture(1280, 1280, 0, RenderTextureFormat.ARGBFloat);
+        rt.Create();
+        Graphics.Blit(depthTexArray, rt, alignedDepthMaterial);
+        Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
+        RenderTexture.active = rt;
+        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        tex.Apply();
+        RenderTexture.active = null;
+        Destroy(rt);
+        return tex;
+    }
 
     /// <summary>
     /// Forward warp: depth -> 3D world -> colore RGB. Per ogni pixel della depth
@@ -442,12 +434,9 @@ public struct CapturedKeyframe
     public System.DateTime timestamp;
     public PassthroughCameraAccess.CameraIntrinsics intrinsics;
     public PassthroughCameraAccess.CameraIntrinsics rightIntrinsics;
-    public Matrix4x4 reprojectionMatrix; // reprojection eye camera, solo debug
+    public Matrix4x4 reprojectionMatrix; // depth camera world->clip (pose+fov sensore depth bakati)
     public Vector4 zBufferParams;
     public Vector2 depthResolution;
-    public EnvironmentDepthFrameDesc depthData;
-    public Vector3 depthCamPosition;  // pose del sensore depth (sorgente per unprojection)
-    public Vector4 depthCamRotation;  // quaternion (x,y,z,w)
 }
 
 [System.Serializable]
@@ -456,13 +445,6 @@ struct PoseData
     public float px, py, pz;
     public float rx, ry, rz, rw;
     public string timestamp;
-}
-
-[System.Serializable]
-struct DepthCamPoseData
-{
-    public float px, py, pz;
-    public float rx, ry, rz, rw;
 }
 
 [System.Serializable]
@@ -500,8 +482,4 @@ struct Matrix4x4Data
 struct DepthMetaData
 {
     public float width, height;
-    public float FOVleft, FOVright;
-    public float nearZ, farZ;       // near/far della proiezione depth camera — necessari per la matrice di proiezione
-    public float minDepth, maxDepth; // range di confidenza del sensore, utile per filtrare la depth raw
-    public double createTime;        // istante di cattura reale del sensore, per sync con timestamp RGB
 }
