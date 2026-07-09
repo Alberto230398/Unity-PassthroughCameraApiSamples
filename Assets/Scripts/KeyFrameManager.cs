@@ -77,13 +77,11 @@ public class KeyFrameManager : MonoBehaviour
     [BeforeRenderOrder(100)]
     void CaptureKeyframe()
     {
-        // La depth non è prodotta nei primi frame dopo l'attivazione del depth
-        // manager; catturare prima produce una texture tutta-lontana (raw=1.0).
+        // Se la depth non è disponibile o la PCA non sta girando quitta
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
         if (passthroughCameraLeft == null || !passthroughCameraLeft.IsPlaying) return;
 
-        // Gate #1 — frame depth NUOVO. Se l'id non è cambiato dall'ultimo
-        // keyframe la depth global è la stessa: non accoppiarla a un RGB nuovo.
+        // Se l'ID della depth non è cambiato quitta
         uint depthTexId = 0;
         if (!Utils.GetEnvironmentDepthTextureId(ref depthTexId)) return;
         if (depthTexId == _lastCapturedDepthTexId) return;
