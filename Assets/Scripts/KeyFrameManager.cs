@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Meta.XR;
 using TMPro;
 using UnityEngine;
@@ -26,8 +27,22 @@ public class KeyFrameManager : MonoBehaviour
     private Vector3 _lastKeyframePosition;
     private Quaternion _lastKeyframeRotation;
 
+    // Rotazione della testa al tick PRECEDENTE: confrontandola con quella corrente
+    // stimiamo la velocità angolare istantanea (quanto veloce stai girando la testa
+    // proprio adesso). Il flag distingue il primo tick, quando un riferimento
+    // precedente non esiste ancora.
+    private Quaternion _prevHeadRotation;
+    private bool _hasPrevHeadRotation = false;
+
     [SerializeField] float translationThreshold = 0.1f; // 10cm
     [SerializeField] float rotationThreshold = 5f; // 5 gradi
+
+    // Velocità angolare massima della testa (gradi/sec) oltre la quale NON catturiamo.
+    // Depth e RGB arrivano da due stream asincroni con latenze diverse: durante una
+    // rotazione veloce i due frame appartengono a orientamenti diversi e inquadrano
+    // due parti diverse della stanza (non si sovrappongono). Sopra questa soglia
+    // scartiamo la cattura e aspettiamo un momento più fermo. Taralo dall'Inspector.
+    [SerializeField] float maxHeadAngularSpeed = 30f;
 
     // Accessor alla Passthrough Camera API — sensori fisicamente separati
     // dalla depth camera, ciascuno con pose/intrinseci propri.
@@ -53,6 +68,15 @@ public class KeyFrameManager : MonoBehaviour
     // primo id valido.
     private uint _lastCapturedDepthTexId = uint.MaxValue;
 
+    // --- LOG DIAGNOSTICO ---
+    // Ultimo depthTexId visto al tick PRECEDENTE (diverso da _lastCapturedDepthTexId,
+    // che è l'ultimo SALVATO): serve a scrivere un record solo quando arriva un frame
+    // depth nuovo, evitando di riempire il file a ogni tick di render (~90 Hz).
+    private uint _lastSeenDepthTexId = uint.MaxValue;
+    // Buffer in memoria dei record; viene scritto su disco periodicamente e alla chiusura.
+    private readonly KeyframeLog _log = new KeyframeLog();
+    private double _lastLogFlushTime = 0;
+
     void Awake()
     {
         // Risolve automaticamente il depth manager se non wired in Inspector,
@@ -70,6 +94,14 @@ public class KeyFrameManager : MonoBehaviour
     void OnDisable()
     {
         Application.onBeforeRender -= CaptureKeyframe;
+        FlushLog(); // salva su disco gli ultimi record non ancora scritti
+    }
+
+    // Su Quest l'app viene messa in pausa quando togli il visore o esci: salviamo
+    // il log in quel momento, così non perdiamo i record accumulati in memoria.
+    void OnApplicationPause(bool paused)
+    {
+        if (paused) FlushLog();
     }
 
     // Ordine 100 > 0 del manager Meta -> giriamo SEMPRE dopo che i global depth
@@ -77,36 +109,140 @@ public class KeyFrameManager : MonoBehaviour
     [BeforeRenderOrder(100)]
     void CaptureKeyframe()
     {
-        // Se la depth non è disponibile o la PCA non sta girando quitta
+        // === CONTROLLI DI VALIDITÀ ===
+        // Se la depth non è disponibile o la camera PCA non sta girando, esci subito.
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
         if (passthroughCameraLeft == null || !passthroughCameraLeft.IsPlaying) return;
 
-        // Se l'ID della depth non è cambiato quitta
-        uint depthTexId = 0;
-        if (!Utils.GetEnvironmentDepthTextureId(ref depthTexId)) return;
-        if (depthTexId == _lastCapturedDepthTexId) return;
-
+        // Pose della testa (camera PCA sinistra) in questo istante.
         var pose = passthroughCameraLeft.GetCameraPose();
 
-        // Cattura il primo keyframe appena la depth diventa disponibile.
+        // === STIMA VELOCITÀ ANGOLARE DELLA TESTA ===
+        // Quanto sta ruotando la testa ADESSO, in gradi al secondo.
+        // La calcoliamo a OGNI tick (anche quando poi non catturiamo) così il
+        // delta di tempo resta piccolo e la stima è affidabile: se aggiornassimo
+        // il riferimento solo quando catturiamo, il dt si accumulerebbe e la
+        // velocità risulterebbe falsata. Al primo tick manca il riferimento
+        // precedente, quindi lasciamo la velocità a 0 (non blocca).
+        float headAngularSpeed = 0f; // gradi/sec
+        if (_hasPrevHeadRotation)
+        {
+            float dt = Time.unscaledDeltaTime;
+            if (dt > 0f)
+                headAngularSpeed = Quaternion.Angle(pose.rotation, _prevHeadRotation) / dt;
+        }
+        _prevHeadRotation = pose.rotation;
+        _hasPrevHeadRotation = true;
+
+        // === GATE 1: FRAME DEPTH NUOVO ===
+        // depthTexId è l'handle del buffer di swapchain della depth corrente.
+        uint depthTexId = 0;
+        if (!Utils.GetEnvironmentDepthTextureId(ref depthTexId)) return;
+
+        // Un frame depth è "nuovo" se l'id è cambiato rispetto al tick precedente.
+        // Logghiamo un record SOLO su questi eventi, non a ogni singolo tick di render.
+        bool isNewDepthFrame = depthTexId != _lastSeenDepthTexId;
+        _lastSeenDepthTexId = depthTexId;
+
+        // Se è lo STESSO frame depth che abbiamo già salvato, non ci sono dati nuovi: esci.
+        if (depthTexId == _lastCapturedDepthTexId) return;
+
+        // === GATE 2: TESTA TROPPO VELOCE (fix disallineamento RGB-Depth) ===
+        // Se in questo istante la testa ruota più veloce della soglia, il frame
+        // depth e il frame RGB appartengono a orientamenti diversi e inquadrano
+        // due parti diverse della stanza. Scartiamo e aspettiamo un momento fermo.
+        if (headAngularSpeed > maxHeadAngularSpeed)
+        {
+            if (isNewDepthFrame)
+                LogEvent("skip_head_fast", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
+            return;
+        }
+
+        Debug.Log("----------------DEPTH ID: " + depthTexId +
+                  " | vel. testa: " + headAngularSpeed.ToString("F1") + " deg/s-----------------");
+
+        // === PRIMO KEYFRAME ===
+        // Appena la depth diventa disponibile (e i gate sopra sono superati),
+        // catturiamo subito il primo keyframe.
         if (!_firstKeyframeCaptured)
         {
             DoCaptureKeyframe(pose, depthTexId);
             _firstKeyframeCaptured = true;
             _lastKeyframePosition = pose.position;
             _lastKeyframeRotation = pose.rotation;
+            // _keyframeCount è già stato incrementato dentro DoCaptureKeyframe,
+            // quindi l'indice appena salvato è _keyframeCount - 1.
+            LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, 0f, 0f);
             return;
         }
 
-        // Gate #2 — pose-delta (non a intervalli fissi): minimizza frame
-        // ridondanti nel training set inviato al server di ricostruzione.
+        // === GATE 3: SPAZIATURA TRA KEYFRAME ===
+        // Cattura solo se ci siamo spostati/ruotati abbastanza rispetto all'ULTIMO
+        // keyframe salvato: evita frame ridondanti nel dataset di ricostruzione.
+        // NB: è diverso dal Gate 2 — qui misuriamo la DISTANZA accumulata dall'ultimo
+        // keyframe, là misuravamo la VELOCITÀ istantanea nel momento della cattura.
         float translation = Vector3.Distance(pose.position, _lastKeyframePosition);
         float rotation = Quaternion.Angle(pose.rotation, _lastKeyframeRotation);
-        if (translation <= translationThreshold && rotation <= rotationThreshold) return;
+        if (translation <= translationThreshold && rotation <= rotationThreshold)
+        {
+            if (isNewDepthFrame)
+                LogEvent("skip_spacing", depthTexId, headAngularSpeed, pose, -1, translation, rotation);
+            return;
+        }
 
+        // Tutti i gate superati: catturiamo il keyframe.
         DoCaptureKeyframe(pose, depthTexId);
         _lastKeyframePosition = pose.position;
         _lastKeyframeRotation = pose.rotation;
+        LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, translation, rotation);
+    }
+
+    // Aggiunge un record al buffer di log e lo scrive su disco a intervalli regolari
+    // (oltre che a ogni cattura). Il campo "outcome" dice cosa è successo:
+    //   "captured"       -> keyframe salvato su disco (keyframeIndex valido)
+    //   "skip_head_fast" -> scartato dal Gate 2 (testa troppo veloce)
+    //   "skip_spacing"   -> scartato dal Gate 3 (troppo vicino all'ultimo keyframe)
+    void LogEvent(string outcome, uint depthTexId, float headAngularSpeed, Pose headPose,
+                  int keyframeIndex, float translationFromLast, float rotationFromLast)
+    {
+        var now = System.DateTime.UtcNow;
+        // "Età" del frame RGB: quanti ms sono passati da quando la camera lo ha
+        // esposto a adesso. Se è alta e la testa si muove, è un indizio di skew
+        // temporale tra lo stream RGB e quello depth.
+        float rgbAgeMs = (float)(now - passthroughCameraLeft.Timestamp).TotalMilliseconds;
+
+        _log.entries.Add(new KeyframeLogEntry
+        {
+            frame = Time.frameCount,
+            appTime = Time.realtimeSinceStartupAsDouble,
+            systemTimeUtc = now.ToString("HH:mm:ss.fff"),
+            outcome = outcome,
+            keyframeIndex = keyframeIndex,
+            depthTexId = depthTexId,
+            headAngularSpeed = headAngularSpeed,
+            rgbTimestampUtc = passthroughCameraLeft.Timestamp.ToString("HH:mm:ss.fff"),
+            rgbAgeMs = rgbAgeMs,
+            headPos = headPose.position,
+            headRot = new Vector4(headPose.rotation.x, headPose.rotation.y,
+                                  headPose.rotation.z, headPose.rotation.w),
+            translationFromLast = translationFromLast,
+            rotationFromLast = rotationFromLast,
+        });
+
+        // Flush periodico (ogni 2s) e sempre dopo una cattura: così un eventuale
+        // crash/chiusura fa perdere al massimo pochi record.
+        if (outcome == "captured" || Time.realtimeSinceStartupAsDouble - _lastLogFlushTime > 2.0)
+            FlushLog();
+    }
+
+    // Scrive l'intero buffer di log come JSON leggibile su disco, accanto ai keyframe.
+    void FlushLog()
+    {
+        if (_log.entries.Count == 0) return;
+        string dir = $"{Application.persistentDataPath}/keyframes";
+        System.IO.Directory.CreateDirectory(dir);
+        System.IO.File.WriteAllText($"{dir}/capture_log.json", JsonUtility.ToJson(_log, true));
+        _lastLogFlushTime = Time.realtimeSinceStartupAsDouble;
     }
 
     void DoCaptureKeyframe(Pose pose, uint depthTexId)
@@ -480,4 +616,30 @@ struct Matrix4x4Data
 struct DepthMetaData
 {
     public float width, height;
+}
+
+// Un record per ogni evento "punto chiave" (frame depth nuovo: catturato o scartato).
+[System.Serializable]
+struct KeyframeLogEntry
+{
+    public int frame;                 // Time.frameCount — ordine di render
+    public double appTime;            // secondi dall'avvio dell'app
+    public string systemTimeUtc;      // ora di sistema (UTC) dell'evento
+    public string outcome;            // captured | skip_head_fast | skip_spacing
+    public int keyframeIndex;         // cartella keyframes/N se catturato, altrimenti -1
+    public uint depthTexId;           // handle del buffer swapchain della depth
+    public float headAngularSpeed;    // gradi/sec: quanto ruotava la testa nell'istante
+    public string rgbTimestampUtc;    // timestamp del frame RGB della camera PCA
+    public float rgbAgeMs;            // età del frame RGB (ms) rispetto all'istante dell'evento
+    public Vector3 headPos;           // posizione testa (camera PCA sinistra)
+    public Vector4 headRot;           // rotazione testa (quaternione x,y,z,w)
+    public float translationFromLast; // spostamento dall'ultimo keyframe salvato (m)
+    public float rotationFromLast;    // rotazione dall'ultimo keyframe salvato (gradi)
+}
+
+// Contenitore top-level: JsonUtility non serializza una List da sola, serve wrapparla.
+[System.Serializable]
+class KeyframeLog
+{
+    public List<KeyframeLogEntry> entries = new List<KeyframeLogEntry>();
 }
