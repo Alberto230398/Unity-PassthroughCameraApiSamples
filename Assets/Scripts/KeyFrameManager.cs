@@ -109,6 +109,7 @@ public class KeyFrameManager : MonoBehaviour
     [BeforeRenderOrder(100)]
     void CaptureKeyframe()
     {
+        Debug.Log("-----------CaptureKeyframe() called at time: " + System.DateTime.Now.ToString("HH:mm:ss.fff") + "-----------");
         // === CONTROLLI DI VALIDITÀ ===
         // Se la depth non è disponibile o la camera PCA non sta girando, esci subito.
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
@@ -140,7 +141,6 @@ public class KeyFrameManager : MonoBehaviour
         if (!Utils.GetEnvironmentDepthTextureId(ref depthTexId)) return;
 
         // Un frame depth è "nuovo" se l'id è cambiato rispetto al tick precedente.
-        // Logghiamo un record SOLO su questi eventi, non a ogni singolo tick di render.
         bool isNewDepthFrame = depthTexId != _lastSeenDepthTexId;
         _lastSeenDepthTexId = depthTexId;
 
@@ -158,8 +158,7 @@ public class KeyFrameManager : MonoBehaviour
             return;
         }
 
-        Debug.Log("----------------DEPTH ID: " + depthTexId +
-                  " | vel. testa: " + headAngularSpeed.ToString("F1") + " deg/s-----------------");
+        //Debug.Log("----------------DEPTH ID: " + depthTexId + " | vel. testa: " + headAngularSpeed.ToString("F1") + " deg/s-----------------");
 
         // === PRIMO KEYFRAME ===
         // Appena la depth diventa disponibile (e i gate sopra sono superati),
@@ -211,6 +210,12 @@ public class KeyFrameManager : MonoBehaviour
         // temporale tra lo stream RGB e quello depth.
         float rgbAgeMs = (float)(now - passthroughCameraLeft.Timestamp).TotalMilliseconds;
 
+        // Confronto diretto tra la pose della camera RGB (al suo istante di cattura) e
+        // la pose della camera DEPTH (estratta dalla reproj matrix = istante di cattura
+        // della depth). skewAngleDeg è il disallineamento rotazionale reale in gradi.
+        bool skewValid = TryComputeDepthRgbSkew(headPose, out Vector3 rgbFwd, out Vector3 depthFwd,
+                                                out Vector3 depthEye, out float skewAngleDeg, out float posDiffM);
+
         _log.entries.Add(new KeyframeLogEntry
         {
             frame = Time.frameCount,
@@ -227,6 +232,12 @@ public class KeyFrameManager : MonoBehaviour
                                   headPose.rotation.z, headPose.rotation.w),
             translationFromLast = translationFromLast,
             rotationFromLast = rotationFromLast,
+            skewValid = skewValid,
+            rgbForward = rgbFwd,
+            depthForward = depthFwd,
+            depthEyePos = depthEye,
+            skewAngleDeg = skewAngleDeg,
+            posDiffM = posDiffM,
         });
 
         // Flush periodico (ogni 2s) e sempre dopo una cattura: così un eventuale
@@ -243,6 +254,75 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.Directory.CreateDirectory(dir);
         System.IO.File.WriteAllText($"{dir}/capture_log.json", JsonUtility.ToJson(_log, true));
         _lastLogFlushTime = Time.realtimeSinceStartupAsDouble;
+    }
+
+    // Confronta la pose della camera RGB con la pose della camera DEPTH nel momento
+    // in cui ciascun frame è stato catturato.
+    //
+    // La pose RGB arriva da rgbPose (già calcolata al timestamp del frame RGB).
+    // La pose DEPTH la ricaviamo dalla reprojection matrix globale della depth
+    // (_EnvironmentDepthReprojectionMatrices[0]): quella matrice mappa world -> clip
+    // della camera depth ed è costruita da Meta con la createPose, cioè la posizione
+    // della testa NEL MOMENTO in cui il sensore ha catturato la depth (non adesso).
+    //
+    // Invertendo la matrice (clip -> world) ricostruiamo geometricamente dove guardava
+    // e dov'era la camera depth in quell'istante. L'angolo tra le due direzioni di
+    // sguardo (skewAngleDeg) è il disallineamento reale: se è grande, depth e RGB
+    // stanno inquadrando due parti diverse della stanza.
+    bool TryComputeDepthRgbSkew(Pose rgbPose, out Vector3 rgbFwd, out Vector3 depthFwd,
+                                out Vector3 depthEye, out float skewAngleDeg, out float posDiffM)
+    {
+        rgbFwd = rgbPose.rotation * Vector3.forward;
+        depthFwd = Vector3.zero;
+        depthEye = Vector3.zero;
+        skewAngleDeg = 0f;
+        posDiffM = 0f;
+
+        var reproj = Shader.GetGlobalMatrixArray("_EnvironmentDepthReprojectionMatrices");
+        if (reproj == null || reproj.Length == 0) return false;
+
+        // m mappa world -> clip della camera depth (proj * view, con la createPose
+        // della depth già dentro). Estraiamo i piani del frustum in world space
+        // sommando/sottraendo le righe (Gribb-Hartmann): NIENTE inversa, NIENTE
+        // divisione per w — così evitiamo i NaN del metodo precedente.
+        Matrix4x4 m = reproj[0];
+        Vector4 r0 = m.GetRow(0);
+        Vector4 r1 = m.GetRow(1);
+        Vector4 r3 = m.GetRow(3);
+
+        // Piani laterali del frustum (passano TUTTI per il centro ottico della camera).
+        Vector4 left   = r3 + r0;
+        Vector4 right  = r3 - r0;
+        Vector4 bottom = r3 + r1;
+
+        // Centro ottico della depth = intersezione dei tre piani laterali.
+        // Formula standard di intersezione di 3 piani (n_i · X + d_i = 0).
+        Vector3 nL = new Vector3(left.x, left.y, left.z);
+        Vector3 nR = new Vector3(right.x, right.y, right.z);
+        Vector3 nB = new Vector3(bottom.x, bottom.y, bottom.z);
+        Vector3 cRB = Vector3.Cross(nR, nB);
+        float det = Vector3.Dot(nL, cRB);
+        if (Mathf.Abs(det) < 1e-12f) return false;
+        Vector3 cBL = Vector3.Cross(nB, nL);
+        Vector3 cLR = Vector3.Cross(nL, nR);
+        depthEye = (-left.w * cRB - right.w * cBL - bottom.w * cLR) / det;
+
+        // Direzione di sguardo: la riga w della matrice (r3) punta lungo l'asse ottico,
+        // perché left+right = bottom+top = 2*r3 (le componenti laterali si annullano).
+        // È indipendente dalla convenzione dello z-clip.
+        Vector3 fwd = new Vector3(r3.x, r3.y, r3.z);
+        if (fwd.sqrMagnitude < 1e-12f) return false;
+        fwd.Normalize();
+        // Depth e RGB sono co-locate sulla stessa testa: il forward vero è quasi
+        // parallelo a quello RGB. Il segno di r3 dipende dalla convenzione, quindi
+        // scegliamo il verso più vicino all'RGB (un vero disallineamento resta piccolo,
+        // non arriva mai a ribaltare la scelta).
+        if (Vector3.Dot(fwd, rgbFwd) < 0f) fwd = -fwd;
+        depthFwd = fwd;
+
+        skewAngleDeg = Vector3.Angle(depthFwd, rgbFwd);
+        posDiffM = Vector3.Distance(depthEye, rgbPose.position);
+        return true;
     }
 
     void DoCaptureKeyframe(Pose pose, uint depthTexId)
@@ -285,11 +365,12 @@ public class KeyFrameManager : MonoBehaviour
             rightTarget.Create();
         }
 
-        Debug.Log("----------------PCA TIME WHEN SAVING RGB TEXTURE:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
-        Debug.Log("----------------SYSTEM TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
+        //Debug.Log("----------------PCA TIME WHEN SAVING RGB TEXTURE:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
         // Blit dei frame camera correnti sui render target
         Graphics.Blit(passthroughCameraLeft.GetTexture(), target);
         Graphics.Blit(passthroughCameraRight.GetTexture(), rightTarget);
+        Debug.Log("----------------SYSTEM TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
+        Debug.Log("----------------PCA TIME WHEN TEXTURE WAS CREATED:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
 
         // Salva i frame RGB + depth (raw, allineata, colorata)
         Texture2D rgb = SaveFrame(target);
@@ -328,8 +409,8 @@ public class KeyFrameManager : MonoBehaviour
             depthResolution = new Vector2(depthTex.width, depthTex.height)
         };
 
-        Debug.Log("----------------PCA TIME WHEN SAVING KEYFRAME:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
-        Debug.Log("----------------UNITY TIME WHEN SAVING KEYFRAME:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
+        //Debug.Log("----------------PCA TIME WHEN SAVING KEYFRAME:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
+        //Debug.Log("----------------UNITY TIME WHEN SAVING KEYFRAME:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
         SaveKeyframeToDisk(kf, _keyframeCount++);
 
         // Marca il frame depth come consumato: il prossimo keyframe userà un id diverso.
@@ -635,6 +716,14 @@ struct KeyframeLogEntry
     public Vector4 headRot;           // rotazione testa (quaternione x,y,z,w)
     public float translationFromLast; // spostamento dall'ultimo keyframe salvato (m)
     public float rotationFromLast;    // rotazione dall'ultimo keyframe salvato (gradi)
+
+    // --- CONFRONTO POSE RGB vs DEPTH (skew reale) ---
+    public bool skewValid;            // false se non è stato possibile estrarre la pose depth
+    public Vector3 rgbForward;        // direzione di sguardo della camera RGB (world), al t di cattura RGB
+    public Vector3 depthForward;      // direzione di sguardo della camera DEPTH (world), al t di cattura depth
+    public Vector3 depthEyePos;       // posizione della camera depth (world), estratta dalla reproj matrix
+    public float skewAngleDeg;        // ANGOLO tra le due direzioni di sguardo = disallineamento rotazionale
+    public float posDiffM;            // distanza tra camera depth e camera RGB (m)
 }
 
 // Contenitore top-level: JsonUtility non serializza una List da sola, serve wrapparla.
