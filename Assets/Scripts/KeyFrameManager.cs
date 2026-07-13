@@ -376,13 +376,16 @@ public class KeyFrameManager : MonoBehaviour
         Texture2D rgb = SaveFrame(target);
         Texture2D rgbRight = SaveFrame(rightTarget);
         Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
+        // Risoluzione dell'immagine RGB corrente (può differire dal sensore pieno):
+        // serve per calcolare il crop di aspect-ratio come fa il SDK.
+        Vector2 currentRes = passthroughCameraLeft.CurrentResolution;
         Texture2D alignedDepth = SaveAlignedDepthFrame(
             depthTex, depthWorldToClip,
             pose.position, pose.rotation,
-            passthroughCameraLeft.Intrinsics, zParams);
+            passthroughCameraLeft.Intrinsics, zParams, currentRes);
         Texture2D depthColored = SaveDepthColored(
             depthTex, target, depthWorldToClip,
-            pose.position, pose.rotation, passthroughCameraLeft.Intrinsics);
+            pose.position, pose.rotation, passthroughCameraLeft.Intrinsics, currentRes);
 
         var intrinsics = passthroughCameraLeft.Intrinsics;
         var rightIntrinsics = passthroughCameraRight.Intrinsics;
@@ -571,8 +574,27 @@ public class KeyFrameManager : MonoBehaviour
         return tex;
     }
 
+    // Replica di CalcSensorCropRegion (metodo privato del SDK PassthroughCameraAccess):
+    // l'immagine RGB corrente è un ritaglio centrato del sensore pieno per adattarne
+    // l'aspect ratio (es. sensore 1280x1280, immagine 1280x960 -> crop (0,160,1280,960)).
+    // Restituisce (cropX, cropY, cropWidth, cropHeight) in pixel del sensore: mappa la
+    // viewport [0,1] dell'immagine nelle coordinate pixel del sensore, coerente con
+    // gli intrinseci (FocalLength/PrincipalPoint sono nel frame del sensore pieno).
+    static Vector4 CalcSensorCropRegion(Vector2 sensorResolution, Vector2 currentResolution)
+    {
+        Vector2 scaleFactor = new Vector2(currentResolution.x / sensorResolution.x,
+                                          currentResolution.y / sensorResolution.y);
+        scaleFactor /= Mathf.Max(scaleFactor.x, scaleFactor.y);
+        return new Vector4(
+            sensorResolution.x * (1f - scaleFactor.x) * 0.5f,
+            sensorResolution.y * (1f - scaleFactor.y) * 0.5f,
+            sensorResolution.x * scaleFactor.x,
+            sensorResolution.y * scaleFactor.y);
+    }
+
     Texture2D SaveAlignedDepthFrame(Texture depthTexArray, Matrix4x4 reprojMatrix,
-    Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr, Vector4 zParams)
+    Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr, Vector4 zParams,
+    Vector2 currentResolution)
     {
         if (alignedDepthMaterial == null) { Debug.LogError("alignedDepthMaterial not assigned"); return null; }
 
@@ -583,10 +605,16 @@ public class KeyFrameManager : MonoBehaviour
         alignedDepthMaterial.SetVector("_PrincipalPoint", new Vector4(intr.PrincipalPoint.x, intr.PrincipalPoint.y));
         alignedDepthMaterial.SetVector("_EnvironmentDepthZBufferParams", zParams);
 
-        var res = intr.SensorResolution;
-        alignedDepthMaterial.SetVector("_CropRegion", new Vector4(0, 0, res.x, res.y));
+        // Crop di aspect-ratio del sensore (come CalcSensorCropRegion del SDK): mappa
+        // la viewport [0,1] dell'immagine RGB nelle coordinate pixel del sensore pieno.
+        // Passare (0,0,sensor) darebbe un errore di scala verticale che disallinea la
+        // depth ai bordi (0 al centro, massimo in alto/basso).
+        alignedDepthMaterial.SetVector("_CropRegion",
+            CalcSensorCropRegion(intr.SensorResolution, currentResolution));
 
-        RenderTexture rt = new RenderTexture(1280, 1280, 0, RenderTextureFormat.ARGBFloat);
+        // Output alla risoluzione dell'immagine RGB corrente, così alignedDepth.exr
+        // combacia pixel-per-pixel con LeftRGB.png (niente stretch di aspect-ratio).
+        RenderTexture rt = new RenderTexture((int)currentResolution.x, (int)currentResolution.y, 0, RenderTextureFormat.ARGBFloat);
         rt.Create();
         Graphics.Blit(depthTexArray, rt, alignedDepthMaterial);
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
@@ -605,7 +633,8 @@ public class KeyFrameManager : MonoBehaviour
     /// depth (risoluzione depth camera). Usa lo shader Custom/DepthColorReprojection.
     /// </summary>
     Texture2D SaveDepthColored(Texture depthTexArray, Texture rgbTex, Matrix4x4 reprojMatrix,
-        Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr)
+        Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr,
+        Vector2 currentResolution)
     {
         if (depthColorMaterial == null) { Debug.LogError("depthColorMaterial not assigned"); return null; }
 
@@ -616,8 +645,10 @@ public class KeyFrameManager : MonoBehaviour
         depthColorMaterial.SetVector("_FocalLength", new Vector4(intr.FocalLength.x, intr.FocalLength.y));
         depthColorMaterial.SetVector("_PrincipalPoint", new Vector4(intr.PrincipalPoint.x, intr.PrincipalPoint.y));
 
-        var res = intr.SensorResolution;
-        depthColorMaterial.SetVector("_CropRegion", new Vector4(0, 0, res.x, res.y));
+        // Stesso crop di aspect-ratio del SDK: senza, le rgbUV campionate dal
+        // point cloud colorato risultano disallineate al colore RGB reale.
+        depthColorMaterial.SetVector("_CropRegion",
+            CalcSensorCropRegion(intr.SensorResolution, currentResolution));
         depthColorMaterial.SetTexture("_RGBTex", rgbTex);
 
         RenderTexture rt = new RenderTexture(depthTexArray.width, depthTexArray.height, 0, RenderTextureFormat.ARGB32);
