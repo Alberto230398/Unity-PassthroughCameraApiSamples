@@ -9,6 +9,7 @@ using Meta.XR.EnvironmentDepth;
 using Unity.XR.Oculus;
 using static Unity.XR.Oculus.Utils;
 using System.Runtime.CompilerServices;
+using Unity.Mathematics;
 
 
 public class KeyFrameManager : MonoBehaviour
@@ -27,6 +28,9 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] float rotationThreshold = 5f; // 5 gradi
     [SerializeField] float maxHeadAngularSpeed = 30f;
     [SerializeField] float maxHeadTranslationSpeed = 0.5f; // metri/sec
+
+    [SerializeField] float MaximumPosDeviation = 0.1f; // metri/sec
+    [SerializeField] float MaximumRotDeviation = 5f; // gradi/sec
 
     // Accessor alla Passthrough Camera API — sensori fisicamente separati
     // dalla depth camera, ciascuno con pose/intrinseci propri.
@@ -53,12 +57,20 @@ public class KeyFrameManager : MonoBehaviour
     private readonly KeyframeLog _log = new KeyframeLog();
     private double _lastLogFlushTime = 0;
 
+    HeadPoseList _headPoseHistory;
+    [SerializeField] int maxHeadPoseHistorySize = 60; // memorizza le ultime 10 pose della testa per calcolare la velocità media
+
     void Awake()
     {
         // Risolve automaticamente il depth manager se non wired in Inspector,
         // altrimenti il gate IsDepthAvailable sotto blocca ogni cattura.
         if (environmentDepthManager == null)
             environmentDepthManager = FindFirstObjectByType<EnvironmentDepthManager>();
+    }
+
+    void HeadPoseList()
+    {
+        _headPoseHistory = new HeadPoseList();
     }
 
     void OnEnable()
@@ -142,6 +154,34 @@ public class KeyFrameManager : MonoBehaviour
         {
             if (isNewDepthFrame)
                 LogEvent("skip_head_fast_translation", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
+            return;
+        }
+
+        // Salvo la posizione della testa ad ogni tick
+
+        HeadPose headPose = new HeadPose
+        {
+            timestamp = Time.unscaledTimeAsDouble,
+            position = pose.position,
+            rotation = pose.rotation
+        };
+
+       _headPoseHistory.Push(headPose);
+
+       bool isHeadPoseValid = false;
+
+       if (!_headPoseHistory.HasTwo()) return;
+
+        HeadPose actual = _headPoseHistory.Last();
+        HeadPose last = _headPoseHistory.Prev();
+        HeadPose prev = _headPoseHistory.PrevPrev();
+
+        isHeadPoseValid = CalculateDeviation(actual, last, prev);
+
+        if (!isHeadPoseValid)
+        {
+            if (isNewDepthFrame)
+                LogEvent("skip_head_pose_deviation", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
             return;
         }
 
@@ -251,6 +291,31 @@ public class KeyFrameManager : MonoBehaviour
     // e dov'era la camera depth in quell'istante. L'angolo tra le due direzioni di
     // sguardo (skewAngleDeg) è il disallineamento reale: se è grande, depth e RGB
     // stanno inquadrando due parti diverse della stanza.
+
+    bool CalculateDeviation(HeadPose actual, HeadPose last, HeadPose prev)
+    {
+        bool isFrameOk = false;
+
+        float FirstDiff = Vector3.Distance(actual.position, last.position) / (float)(actual.timestamp - last.timestamp);
+        float SecondDiff = Vector3.Distance(last.position, prev.position) / (float)(last.timestamp - prev.timestamp);
+        float PosDev = 0.5f*(FirstDiff + SecondDiff);
+
+        float FirstRotDiff = Quaternion.Angle(actual.rotation, last.rotation) / (float)(actual.timestamp - last.timestamp);
+        float SecondRotDiff = Quaternion.Angle(last.rotation, prev.rotation) / (float)(last.timestamp - prev.timestamp);
+        float RotDev = 0.5f*(FirstRotDiff + SecondRotDiff);
+
+        if (PosDev > MaximumPosDeviation || RotDev > MaximumRotDeviation)
+        {
+            isFrameOk = false;
+            Debug.Log($"Head Pose Deviation Exceeded: PosDev={PosDev} m/s, RotDev={RotDev} deg/s");
+        }
+        else
+        {
+            isFrameOk = true;
+        }
+
+        return isFrameOk;
+    }
     bool TryComputeDepthRgbSkew(Pose rgbPose, out Vector3 rgbFwd, out Vector3 depthFwd,
                                 out Vector3 depthEye, out float skewAngleDeg, out float posDiffM)
     {
@@ -744,4 +809,33 @@ struct KeyframeLogEntry
 class KeyframeLog
 {
     public List<KeyframeLogEntry> entries = new List<KeyframeLogEntry>();
+}
+
+[System.Serializable]
+public struct HeadPose
+{
+    public double timestamp;
+    public Vector3 position;
+    public Quaternion rotation;
+}
+
+public class HeadPoseList
+{
+    const int N = 60;
+    private HeadPose[] _headPoseHistory = new HeadPose[N];
+    private int _count = 0;
+    private int head = -1;
+
+    public void Push(HeadPose h)
+    {
+        head = (head+1)%N;
+        _headPoseHistory[head] = h;
+        if (_count < N) _count++;
+    }
+
+    public HeadPose Last() => _headPoseHistory[head];
+    public HeadPose Prev() => _headPoseHistory[(head - 1 + N) % N];
+    public HeadPose PrevPrev() => _headPoseHistory[(head - 2 + N) % N];
+
+    public bool HasTwo() => _count >= 2;
 }
