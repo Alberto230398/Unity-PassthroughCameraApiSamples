@@ -58,7 +58,7 @@ public class KeyFrameManager : MonoBehaviour
     private double _lastLogFlushTime = 0;
 
     HeadPoseList _headPoseHistory;
-    [SerializeField] int maxHeadPoseHistorySize = 60; // memorizza le ultime 10 pose della testa per calcolare la velocità media
+    [SerializeField] int maxHeadPoseHistorySize = 60; // capacità del ring buffer delle pose della testa (ne bastano 3 per la deviazione)
 
     void Awake()
     {
@@ -68,9 +68,11 @@ public class KeyFrameManager : MonoBehaviour
             environmentDepthManager = FindFirstObjectByType<EnvironmentDepthManager>();
     }
 
-    void HeadPoseList()
+    void Start()
     {
-        _headPoseHistory = new HeadPoseList();
+        // Costruito qui (non come field initializer) così legge maxHeadPoseHistorySize
+        // dopo che l'Inspector ha deserializzato il valore.
+        _headPoseHistory = new HeadPoseList(maxHeadPoseHistorySize);
     }
 
     void OnEnable()
@@ -106,6 +108,7 @@ public class KeyFrameManager : MonoBehaviour
         // Pose della testa (camera PCA sinistra) in questo istante.
         var pose = passthroughCameraLeft.GetCameraPose();
 
+        /*
         // === STIMA VELOCITÀ DELLA TESTA ===
         float headAngularSpeed = 0f; // gradi/sec
         if (_hasPrevHeadRotation)
@@ -127,7 +130,7 @@ public class KeyFrameManager : MonoBehaviour
                 headTranslation = Vector3.Distance(pose.position, _lastHeadPosition) / dt;
         }
         _lastHeadPosition = pose.position;
-        _hasPrevHeadPosition = true;
+        _hasPrevHeadPosition = true;*/
 
         // === Controllo 1: FRAME DEPTH NUOVO ===
 
@@ -141,7 +144,7 @@ public class KeyFrameManager : MonoBehaviour
 
         // === Controllo 2: TESTA TROPPO VELOCE ===
       
-        if (headAngularSpeed > maxHeadAngularSpeed)
+        /*if (headAngularSpeed > maxHeadAngularSpeed)
         {
             if (isNewDepthFrame)
                 LogEvent("skip_head_fast", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
@@ -155,7 +158,7 @@ public class KeyFrameManager : MonoBehaviour
             if (isNewDepthFrame)
                 LogEvent("skip_head_fast_translation", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
             return;
-        }
+        }*/
 
         // Salvo la posizione della testa ad ogni tick
 
@@ -170,7 +173,7 @@ public class KeyFrameManager : MonoBehaviour
 
        bool isHeadPoseValid = false;
 
-       if (!_headPoseHistory.HasTwo()) return;
+       if (!_headPoseHistory.HasThree()) return;
 
         HeadPose actual = _headPoseHistory.Last();
         HeadPose last = _headPoseHistory.Prev();
@@ -179,11 +182,7 @@ public class KeyFrameManager : MonoBehaviour
         isHeadPoseValid = CalculateDeviation(actual, last, prev);
 
         if (!isHeadPoseValid)
-        {
-            if (isNewDepthFrame)
-                LogEvent("skip_head_pose_deviation", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
             return;
-        }
 
         // === PRIMO KEYFRAME ===
         // Appena la depth diventa disponibile cattura il primo keyframe
@@ -194,7 +193,7 @@ public class KeyFrameManager : MonoBehaviour
             _firstKeyframeCaptured = true;
             _lastKeyframePosition = pose.position;
             _lastKeyframeRotation = pose.rotation; 
-            LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, 0f, 0f);
+            //LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, 0f, 0f);
             return;
         }
 
@@ -205,17 +204,12 @@ public class KeyFrameManager : MonoBehaviour
         float translation = Vector3.Distance(pose.position, _lastKeyframePosition);
         float rotation = Quaternion.Angle(pose.rotation, _lastKeyframeRotation);
         if (translation <= translationThreshold && rotation <= rotationThreshold)
-        {
-            if (isNewDepthFrame)
-                LogEvent("skip_spacing", depthTexId, headAngularSpeed, pose, -1, translation, rotation);
             return;
-        }
 
         // Tutti i gate superati: catturiamo il keyframe.
         DoCaptureKeyframe(pose, depthTexId);
         _lastKeyframePosition = pose.position;
         _lastKeyframeRotation = pose.rotation;
-        LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, translation, rotation);
     }
 
     // Aggiunge un record al buffer di log e lo scrive su disco a intervalli regolari
@@ -821,10 +815,17 @@ public struct HeadPose
 
 public class HeadPoseList
 {
-    const int N = 60;
-    private HeadPose[] _headPoseHistory = new HeadPose[N];
+    private readonly int N;
+    private readonly HeadPose[] _headPoseHistory;
     private int _count = 0;
     private int head = -1;
+
+    // Minimo 3: CalculateDeviation legge Last/Prev/PrevPrev.
+    public HeadPoseList(int capacity)
+    {
+        N = Mathf.Max(3, capacity);
+        _headPoseHistory = new HeadPose[N];
+    }
 
     public void Push(HeadPose h)
     {
@@ -837,5 +838,5 @@ public class HeadPoseList
     public HeadPose Prev() => _headPoseHistory[(head - 1 + N) % N];
     public HeadPose PrevPrev() => _headPoseHistory[(head - 2 + N) % N];
 
-    public bool HasTwo() => _count >= 2;
+    public bool HasThree() => _count >= 3;
 }
