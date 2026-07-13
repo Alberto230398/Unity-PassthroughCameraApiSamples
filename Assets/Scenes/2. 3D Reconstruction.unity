@@ -1686,6 +1686,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::KeyFrameManager
   translationThreshold: 0.1
   rotationThreshold: 5
+  maxHeadAngularSpeed: 30
+  maxRgbDepthMotionDeg: 3
+  maxRgbDepthMotionTransM: 0.03
+  motionAvgFrames: 4
+  motionAvgFps: 60
   passthroughCameraLeft: {fileID: 1748868315344937867}
   passthroughCameraRight: {fileID: 964992456}
   leftCamera: {fileID: 499068566}
@@ -1730,7 +1735,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: _maxFramerate
-      value: 30
+      value: 60
       objectReference: {fileID: 0}
     - target: {fileID: 711290836827074873, guid: 1870faeed54dd494ea316530d99ca88d, type: 3}
       propertyPath: TargetMaterial
@@ -1960,7 +1965,6 @@ SceneRoots:
   - {fileID: 717028859}
   - {fileID: 412538221}
   - {fileID: 1173471772}
-  - {fileID: 1053136178}
   - {fileID: 287669439}
   - {fileID: 282239777}
   - {fileID: 917117693}
@@ -1973,3 +1977,4 @@ SceneRoots:
   - {fileID: 2039053024}
   - {fileID: 41437978}
   - {fileID: 31397263}
+  - {fileID: 1053136178}

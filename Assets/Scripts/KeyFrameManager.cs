@@ -44,6 +44,27 @@ public class KeyFrameManager : MonoBehaviour
     // scartiamo la cattura e aspettiamo un momento più fermo. Taralo dall'Inspector.
     [SerializeField] float maxHeadAngularSpeed = 30f;
 
+    // Rotazione massima della testa (gradi) DURANTE la finestra di latenza dell'RGB.
+    // È il gate corretto contro il disallineamento depth<->RGB: il frame RGB della PCA
+    // arriva con ~700ms di latenza, mentre la depth è fresca. Ciò che conta non è la
+    // velocità istantanea (maxHeadAngularSpeed, cieca: la testa può essere ferma NELL'
+    // istante di cattura ma aver ruotato molto nei 700ms precedenti), ma di quanto la
+    // testa ha ruotato tra l'esposizione dell'RGB e adesso. Sopra questa soglia i due
+    // frame guardano in direzioni diverse -> scartiamo. Metti <=0 per disabilitare.
+    [SerializeField] float maxRgbDepthMotionDeg = 3f;
+
+    // Come sopra ma per la TRASLAZIONE (metri) della testa nella finestra di latenza:
+    // uno spostamento tra esposizione RGB e depth introduce parallasse tra i due frame.
+    // Metti <=0 per disabilitare il controllo sulla traslazione.
+    [SerializeField] float maxRgbDepthMotionTransM = 0.03f; // 3cm
+
+    // Il movimento nella finestra di latenza non viene misurato su un solo frame ma
+    // MEDIATO sugli ultimi N frame, per smorzare il rumore della singola posa. I frame
+    // sono presi a questa cadenza (fps): a 60fps 4 campioni coprono ~50ms sul lato
+    // "adesso", ognuno confrontato col suo istante di esposizione RGB (-rgbAge).
+    [SerializeField, Range(1, 10)] int motionAvgFrames = 4;
+    [SerializeField] float motionAvgFps = 60f;
+
     // Accessor alla Passthrough Camera API — sensori fisicamente separati
     // dalla depth camera, ciascuno con pose/intrinseci propri.
     [SerializeField] PassthroughCameraAccess passthroughCameraLeft;
@@ -76,6 +97,14 @@ public class KeyFrameManager : MonoBehaviour
     // Buffer in memoria dei record; viene scritto su disco periodicamente e alla chiusura.
     private readonly KeyframeLog _log = new KeyframeLog();
     private double _lastLogFlushTime = 0;
+
+    // Storia recente della rotazione della testa (pose PCA) campionata a OGNI tick.
+    // Serve a stimare, al momento della cattura, quanto la testa ha ruotato durante la
+    // finestra di latenza dell'RGB: confrontiamo la rotazione ADESSO con quella di
+    // ~rgbAge fa. Anello di ~2s a ~90Hz -> poche centinaia di campioni.
+    private struct HeadSample { public double time; public Quaternion rot; public Vector3 pos; }
+    private readonly List<HeadSample> _headHistory = new List<HeadSample>();
+    private const double HeadHistorySeconds = 2.0;
 
     void Awake()
     {
@@ -119,12 +148,13 @@ public class KeyFrameManager : MonoBehaviour
         var pose = passthroughCameraLeft.GetCameraPose();
 
         // === STIMA VELOCITÀ ANGOLARE DELLA TESTA ===
-        // Quanto sta ruotando la testa ADESSO, in gradi al secondo.
-        // La calcoliamo a OGNI tick (anche quando poi non catturiamo) così il
-        // delta di tempo resta piccolo e la stima è affidabile: se aggiornassimo
-        // il riferimento solo quando catturiamo, il dt si accumulerebbe e la
+
+        // Quanto sta ruotando la testa adesso, in gradi al secondo.
+        // La calcoliamo a a ogni tick, così il delta di tempo resta piccolo e la stima è affidabile.
+        // Se aggiornassimo il riferimento solo quando catturiamo, il dt si accumulerebbe e la
         // velocità risulterebbe falsata. Al primo tick manca il riferimento
-        // precedente, quindi lasciamo la velocità a 0 (non blocca).
+        // precedente, quindi lasciamo la velocità a 0.
+
         float headAngularSpeed = 0f; // gradi/sec
         if (_hasPrevHeadRotation)
         {
@@ -134,6 +164,77 @@ public class KeyFrameManager : MonoBehaviour
         }
         _prevHeadRotation = pose.rotation;
         _hasPrevHeadRotation = true;
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // 1) STORIA DELLE POSE DELLA TESTA (ring buffer degli ultimi ~2 secondi)
+        // ─────────────────────────────────────────────────────────────────────────
+        // Per capire se depth e RGB sono allineati dobbiamo poter "guardare indietro
+        // nel tempo": sapere com'era orientata/dov'era la testa in un istante passato.
+        // Perciò a OGNI tick salviamo (tempo, rotazione, posizione) in una lista.
+        
+        double nowT = Time.unscaledTimeAsDouble;                 // istante attuale, in secondi
+        _headHistory.Add(new HeadSample { time = nowT, rot = pose.rotation, pos = pose.position });
+
+        // Potatura: la lista è ordinata dal più VECCHIO (indice 0) al più recente.
+        // Contiamo quanti campioni in testa sono più vecchi della finestra che teniamo
+        // (nowT - HeadHistorySeconds) e li rimuoviamo, così il buffer non cresce all'infinito.
+        int firstKeep = 0;
+        while (firstKeep < _headHistory.Count && _headHistory[firstKeep].time < nowT - HeadHistorySeconds)
+            firstKeep++;
+        if (firstKeep > 0) _headHistory.RemoveRange(0, firstKeep);
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // 2) LARGHEZZA DELLA FINESTRA DI LATENZA (quanto è vecchio il frame RGB)
+        // ─────────────────────────────────────────────────────────────────────────
+        // La depth è FRESCA (adesso), ma il frame RGB della PCA è stato esposto un po'
+        // di tempo fa (~700-900ms). rgbAge = quanto fa. È l'intervallo temporale su cui
+        // dobbiamo misurare il movimento della testa: se in quell'intervallo la testa
+        // si è mossa, RGB e depth inquadrano scene diverse -> disallineamento.
+        double rgbAgeMs = (System.DateTime.UtcNow - passthroughCameraLeft.Timestamp).TotalMilliseconds;
+
+        // ─────────────────────────────────────────────────────────────────────────
+        // 3) MOVIMENTO DELLA TESTA NELLA FINESTRA DI LATENZA (mediato su N frame)
+        // ─────────────────────────────────────────────────────────────────────────
+        // Misura base = confronto tra la posa ADESSO e la posa di rgbAge fa:
+        //
+        //   passato  ......................................................  adesso
+        //            b = posa(t - rgbAge)                       a = posa(t)
+        //            |<------------------ rgbAge --------------->|
+        //            \___ movimento = angolo(a,b) e distanza(a,b) ___/
+        //
+        // Ma la posa di un SINGOLO istante può tremolare (rumore di tracking). Per
+        // renderla robusta ripetiamo la misura per gli ultimi N frame, spostati di
+        // dt = 1/fps l'uno dall'altro, e facciamo la MEDIA. Nota: dt sposta solo QUALE
+        // coppia campioniamo; ogni coppia resta larga rgbAge.
+        //
+        //   i=0:  a=posa(t)        b=posa(t - rgbAge)
+        //   i=1:  a=posa(t - dt)   b=posa(t - dt - rgbAge)
+        //   i=2:  a=posa(t - 2dt)  b=posa(t - 2dt - rgbAge)   ...
+        //
+        // Restano a -1 se la storia non arriva abbastanza indietro (es. avvio): in quel
+        // caso il Gate 2.5 NON blocca (non abbiamo abbastanza dati per giudicare).
+        float rgbDepthMotionDeg = -1f;    // rotazione media della testa nella finestra (gradi)
+        float rgbDepthMotionTransM = -1f; // traslazione media della testa nella finestra (metri)
+        {
+            double dt = motionAvgFps > 0f ? 1.0 / motionAvgFps : 0.0; // distanza temporale tra i campioni
+            int n = Mathf.Max(1, motionAvgFrames);                    // quante coppie mediare
+            double oldest = _headHistory.Count > 0 ? _headHistory[0].time : nowT; // istante più vecchio in storia
+            float sumRot = 0f, sumTrans = 0f; int cnt = 0;
+            for (int i = 0; i < n; i++)
+            {
+                double tNow = nowT - i * dt;            // lato "adesso" dell'i-esima coppia
+                double tOld = tNow - rgbAgeMs / 1000.0; // lato "esposizione RGB" della stessa coppia
+                if (tOld < oldest) break;               // la storia non copre così indietro: fermati
+                HeadSample a = HeadSampleAt(tNow);      // posa registrata più vicina a tNow
+                HeadSample b = HeadSampleAt(tOld);      // posa registrata più vicina a tOld
+                sumRot   += Quaternion.Angle(a.rot, b.rot); // di quanto ha RUOTATO (gradi)
+                sumTrans += Vector3.Distance(a.pos, b.pos); // di quanto si è SPOSTATA (metri)
+                cnt++;
+            }
+            // Media solo sulle coppie effettivamente calcolate (cnt), non su n:
+            // all'avvio cnt può essere < n perché la storia è ancora corta.
+            if (cnt > 0) { rgbDepthMotionDeg = sumRot / cnt; rgbDepthMotionTransM = sumTrans / cnt; }
+        }
 
         // === GATE 1: FRAME DEPTH NUOVO ===
         // depthTexId è l'handle del buffer di swapchain della depth corrente.
@@ -154,7 +255,24 @@ public class KeyFrameManager : MonoBehaviour
         if (headAngularSpeed > maxHeadAngularSpeed)
         {
             if (isNewDepthFrame)
-                LogEvent("skip_head_fast", depthTexId, headAngularSpeed, pose, -1, 0f, 0f);
+                LogEvent("skip_head_fast", depthTexId, headAngularSpeed, pose, -1, 0f, 0f, rgbDepthMotionDeg, rgbDepthMotionTransM);
+            return;
+        }
+
+        // === GATE 2.5: MOVIMENTO NELLA FINESTRA DI LATENZA RGB (fix vero) ===
+
+        // Se la testa ha ruotato troppo tra l'esposizione dell'RGB (~700ms fa) e adesso,
+        // il frame RGB stale e la depth fresca guardano in direzioni diverse -> scartiamo.
+        // Controlla sia la ROTAZIONE sia la TRASLAZIONE della testa nella finestra.
+        // Cattura i casi che maxHeadAngularSpeed non vede (testa ferma nell'istante ma
+        // reduce da un movimento). Valori < 0 = non calcolabili (avvio): non blocchiamo.
+        // Soglia <= 0 = controllo disattivo per quella componente (indipendenti).
+        bool rotTooMuch   = maxRgbDepthMotionDeg    > 0f && rgbDepthMotionDeg    > maxRgbDepthMotionDeg;
+        bool transTooMuch = maxRgbDepthMotionTransM > 0f && rgbDepthMotionTransM > maxRgbDepthMotionTransM;
+        if (rotTooMuch || transTooMuch)
+        {
+            if (isNewDepthFrame)
+                LogEvent("skip_latency_motion", depthTexId, headAngularSpeed, pose, -1, 0f, 0f, rgbDepthMotionDeg, rgbDepthMotionTransM);
             return;
         }
 
@@ -165,13 +283,13 @@ public class KeyFrameManager : MonoBehaviour
         // catturiamo subito il primo keyframe.
         if (!_firstKeyframeCaptured)
         {
-            DoCaptureKeyframe(pose, depthTexId);
+            DoCaptureKeyframe(pose, depthTexId, rgbDepthMotionDeg, rgbDepthMotionTransM);
             _firstKeyframeCaptured = true;
             _lastKeyframePosition = pose.position;
             _lastKeyframeRotation = pose.rotation;
             // _keyframeCount è già stato incrementato dentro DoCaptureKeyframe,
             // quindi l'indice appena salvato è _keyframeCount - 1.
-            LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, 0f, 0f);
+            LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, 0f, 0f, rgbDepthMotionDeg, rgbDepthMotionTransM);
             return;
         }
 
@@ -185,24 +303,41 @@ public class KeyFrameManager : MonoBehaviour
         if (translation <= translationThreshold && rotation <= rotationThreshold)
         {
             if (isNewDepthFrame)
-                LogEvent("skip_spacing", depthTexId, headAngularSpeed, pose, -1, translation, rotation);
+                LogEvent("skip_spacing", depthTexId, headAngularSpeed, pose, -1, translation, rotation, rgbDepthMotionDeg, rgbDepthMotionTransM);
             return;
         }
 
         // Tutti i gate superati: catturiamo il keyframe.
-        DoCaptureKeyframe(pose, depthTexId);
+        DoCaptureKeyframe(pose, depthTexId, rgbDepthMotionDeg, rgbDepthMotionTransM);
         _lastKeyframePosition = pose.position;
         _lastKeyframeRotation = pose.rotation;
-        LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, translation, rotation);
+        LogEvent("captured", depthTexId, headAngularSpeed, pose, _keyframeCount - 1, translation, rotation, rgbDepthMotionDeg, rgbDepthMotionTransM);
+    }
+
+    // Campione di posa (rot+pos) al tempo t, preso dal più vicino nella storia. La
+    // history è ordinata per tempo crescente; scan lineare (poche centinaia di campioni).
+    HeadSample HeadSampleAt(double t)
+    {
+        int best = 0;
+        double bestDiff = double.MaxValue;
+        for (int i = 0; i < _headHistory.Count; i++)
+        {
+            double diff = System.Math.Abs(_headHistory[i].time - t);
+            if (diff < bestDiff) { bestDiff = diff; best = i; }
+            else if (_headHistory[i].time > t) break; // superato t: il più vicino è dietro
+        }
+        return _headHistory[best];
     }
 
     // Aggiunge un record al buffer di log e lo scrive su disco a intervalli regolari
     // (oltre che a ogni cattura). Il campo "outcome" dice cosa è successo:
     //   "captured"       -> keyframe salvato su disco (keyframeIndex valido)
-    //   "skip_head_fast" -> scartato dal Gate 2 (testa troppo veloce)
-    //   "skip_spacing"   -> scartato dal Gate 3 (troppo vicino all'ultimo keyframe)
+    //   "skip_head_fast"     -> scartato dal Gate 2 (velocità istantanea)
+    //   "skip_latency_motion"-> scartato dal Gate 2.5 (rotazione nella finestra latenza)
+    //   "skip_spacing"       -> scartato dal Gate 3 (troppo vicino all'ultimo keyframe)
     void LogEvent(string outcome, uint depthTexId, float headAngularSpeed, Pose headPose,
-                  int keyframeIndex, float translationFromLast, float rotationFromLast)
+                  int keyframeIndex, float translationFromLast, float rotationFromLast,
+                  float rgbDepthMotionDeg, float rgbDepthMotionTransM)
     {
         var now = System.DateTime.UtcNow;
         // "Età" del frame RGB: quanti ms sono passati da quando la camera lo ha
@@ -238,6 +373,8 @@ public class KeyFrameManager : MonoBehaviour
             depthEyePos = depthEye,
             skewAngleDeg = skewAngleDeg,
             posDiffM = posDiffM,
+            rgbDepthMotionDeg = rgbDepthMotionDeg,
+            rgbDepthMotionTransM = rgbDepthMotionTransM,
         });
 
         // Flush periodico (ogni 2s) e sempre dopo una cattura: così un eventuale
@@ -325,7 +462,7 @@ public class KeyFrameManager : MonoBehaviour
         return true;
     }
 
-    void DoCaptureKeyframe(Pose pose, uint depthTexId)
+    void DoCaptureKeyframe(Pose pose, uint depthTexId, float rgbDepthMotionDeg, float rgbDepthMotionTransM)
     {
         // Pose PCA — usate per la riproiezione RGB (world -> spazio colore),
         // NON per l'unprojection della depth (il sensore depth ha pose propria,
@@ -409,7 +546,9 @@ public class KeyFrameManager : MonoBehaviour
             rightIntrinsics = rightIntrinsics,
             reprojectionMatrix = depthWorldToClip,
             zBufferParams = zParams,
-            depthResolution = new Vector2(depthTex.width, depthTex.height)
+            depthResolution = new Vector2(depthTex.width, depthTex.height),
+            rgbDepthMotionDeg = rgbDepthMotionDeg,
+            rgbDepthMotionTransM = rgbDepthMotionTransM
         };
 
         //Debug.Log("----------------PCA TIME WHEN SAVING KEYFRAME:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
@@ -528,6 +667,17 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllText($"{dir}/reprojection_inverse.json", reprojInverse);
         System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
         System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
+
+        // Qualità di allineamento depth<->RGB: rgbDepthMotionDeg è la rotazione della
+        // testa durante la finestra di latenza dell'RGB (-1 = non calcolabile). Più è
+        // basso, più depth e RGB guardano nella stessa direzione. Il server può usarlo
+        // per filtrare/pesare i keyframe nella ricostruzione.
+        string alignment = JsonUtility.ToJson(new AlignmentQualityData
+        {
+            rgbDepthMotionDeg = kf.rgbDepthMotionDeg,
+            rgbDepthMotionTransM = kf.rgbDepthMotionTransM
+        });
+        System.IO.File.WriteAllText($"{dir}/alignment.json", alignment);
     }
 
     // Legge un render target RGBA in una Texture2D CPU-side per encoding/salvataggio.
@@ -683,6 +833,16 @@ public struct CapturedKeyframe
     public Matrix4x4 reprojectionMatrix; // depth camera world->clip (pose+fov sensore depth bakati)
     public Vector4 zBufferParams;
     public Vector2 depthResolution;
+    public float rgbDepthMotionDeg;   // rotazione testa nella finestra di latenza RGB (-1 = n/d)
+    public float rgbDepthMotionTransM; // traslazione testa nella finestra di latenza RGB (-1 = n/d)
+}
+
+// Metrica di qualità dell'allineamento salvata per keyframe (alignment.json).
+[System.Serializable]
+struct AlignmentQualityData
+{
+    public float rgbDepthMotionDeg;
+    public float rgbDepthMotionTransM;
 }
 
 [System.Serializable]
@@ -755,6 +915,8 @@ struct KeyframeLogEntry
     public Vector3 depthEyePos;       // posizione della camera depth (world), estratta dalla reproj matrix
     public float skewAngleDeg;        // ANGOLO tra le due direzioni di sguardo = disallineamento rotazionale
     public float posDiffM;            // distanza tra camera depth e camera RGB (m)
+    public float rgbDepthMotionDeg;   // rotazione testa nella finestra di latenza RGB (-1 = n/d) — predittore del disallineamento
+    public float rgbDepthMotionTransM; // traslazione testa nella finestra di latenza RGB (-1 = n/d)
 }
 
 // Contenitore top-level: JsonUtility non serializza una List da sola, serve wrapparla.
