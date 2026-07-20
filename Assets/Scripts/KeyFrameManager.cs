@@ -390,6 +390,8 @@ public class KeyFrameManager : MonoBehaviour
         Matrix4x4 depthWorldToClip = reproj[0];
 
         // Inizializza i render target RGB dalle dimensioni della camera texture
+        // (risoluzione RGB nativa). Producono la coppia a risoluzione RGB; le
+        // versioni a risoluzione depth sono generate a parte più sotto.
         if (target == null)
         {
             var camTex = passthroughCameraLeft.GetTexture();
@@ -413,17 +415,37 @@ public class KeyFrameManager : MonoBehaviour
         Debug.Log("----------------SYSTEM TIME WHEN SAVING RGB TEXTURE:" + System.DateTime.Now.ToString("HH:mm:ss:fff"));
         Debug.Log("----------------PCA TIME WHEN TEXTURE WAS CREATED:" + passthroughCameraLeft.Timestamp.ToString("HH:mm:ss:fff"));
 
-        // Salva i frame RGB + depth (raw, allineata, colorata)
-        Texture2D rgb = SaveFrame(target);
-        Texture2D rgbRight = SaveFrame(rightTarget);
-        Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
         // Risoluzione dell'immagine RGB corrente (può differire dal sensore pieno):
         // serve per calcolare il crop di aspect-ratio come fa il SDK.
         Vector2 currentRes = passthroughCameraLeft.CurrentResolution;
+        int depthW = depthTex.width, depthH = depthTex.height;
+
+        // === COPPIA A RISOLUZIONE RGB ===
+        // RGB nativo + depth allineata renderizzata alla risoluzione RGB: combaciano
+        // pixel-per-pixel senza stretch di aspect-ratio.
+        Texture2D rgb = SaveFrame(target);
+        Texture2D rgbRight = SaveFrame(rightTarget);
         Texture2D alignedDepth = SaveAlignedDepthFrame(
             depthTex, depthWorldToClip,
             pose.position, pose.rotation,
-            passthroughCameraLeft.Intrinsics, zParams, currentRes);
+            passthroughCameraLeft.Intrinsics, zParams, currentRes,
+            (int)currentRes.x, (int)currentRes.y);
+
+        // === COPPIA A RISOLUZIONE DEPTH ===
+        // Stessa registrazione (crop ancora basato su currentRes), ma griglia di
+        // output = risoluzione depth. RGB ricampionato dalla camera texture direttamente
+        // alla risoluzione depth (un solo resample). Depth allineata idem: le due
+        // restano pixel-per-pixel tra loro (stesso stretch di aspect-ratio).
+        Texture2D rgbDepthRes = SaveFrameAtResolution(passthroughCameraLeft.GetTexture(), depthW, depthH);
+        Texture2D rgbRightDepthRes = SaveFrameAtResolution(passthroughCameraRight.GetTexture(), depthW, depthH);
+        Texture2D alignedDepthDepthRes = SaveAlignedDepthFrame(
+            depthTex, depthWorldToClip,
+            pose.position, pose.rotation,
+            passthroughCameraLeft.Intrinsics, zParams, currentRes,
+            depthW, depthH);
+
+        // Depth raw nativa + point cloud colorato (già a risoluzione depth).
+        Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
         Texture2D depthColored = SaveDepthColored(
             depthTex, target, depthWorldToClip,
             pose.position, pose.rotation, passthroughCameraLeft.Intrinsics, currentRes);
@@ -440,6 +462,9 @@ public class KeyFrameManager : MonoBehaviour
             rgbRight = rgbRight,
             rawDepth = rawDepth,
             alignedDepth = alignedDepth,
+            rgbDepthRes = rgbDepthRes,
+            rgbRightDepthRes = rgbRightDepthRes,
+            alignedDepthDepthRes = alignedDepthDepthRes,
             depthColored = depthColored,
             position = pose.position,
             rotation = pose.rotation,
@@ -465,6 +490,9 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(kf.rgbRight);
         Destroy(kf.rawDepth);
         Destroy(kf.alignedDepth);
+        Destroy(kf.rgbDepthRes);
+        Destroy(kf.rgbRightDepthRes);
+        Destroy(kf.alignedDepthDepthRes);
         Destroy(kf.depthColored);
         Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depthTexId: {depthTexId}");
     }
@@ -489,6 +517,25 @@ public class KeyFrameManager : MonoBehaviour
         // Depth allineata, registrata, risoluzione frame RGB, float EXR.
         byte[] alignedDepthBytes = kf.alignedDepth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/alignedDepth.exr", alignedDepthBytes);
+
+        // === Coppia a risoluzione DEPTH ===
+        // RGB (sinistro/destro) ricampionato a risoluzione depth, PNG.
+        if (kf.rgbDepthRes != null)
+        {
+            byte[] rgbDepthResBytes = kf.rgbDepthRes.EncodeToPNG();
+            System.IO.File.WriteAllBytes($"{dir}/LeftRGB_depthRes.png", rgbDepthResBytes);
+        }
+        if (kf.rgbRightDepthRes != null)
+        {
+            byte[] rgbRightDepthResBytes = kf.rgbRightDepthRes.EncodeToPNG();
+            System.IO.File.WriteAllBytes($"{dir}/RightRGB_depthRes.png", rgbRightDepthResBytes);
+        }
+        // Depth allineata all'RGB ma renderizzata a risoluzione depth, float EXR.
+        if (kf.alignedDepthDepthRes != null)
+        {
+            byte[] alignedDepthResBytes = kf.alignedDepthDepthRes.EncodeToEXR();
+            System.IO.File.WriteAllBytes($"{dir}/alignedDepth_depthRes.exr", alignedDepthResBytes);
+        }
 
         // Point cloud colorato (depth -> 3D -> colore RGB), risoluzione depth, PNG.
         if (kf.depthColored != null)
@@ -582,6 +629,24 @@ public class KeyFrameManager : MonoBehaviour
         return tex;
     }
 
+    // Ricampiona una texture sorgente (es. il frame RGB della PCA) in una Texture2D
+    // CPU-side alla risoluzione (w, h) indicata, con un singolo Graphics.Blit. Usato
+    // per la versione RGB a risoluzione depth senza passare dai target a risoluzione RGB.
+    Texture2D SaveFrameAtResolution(Texture src, int w, int h)
+    {
+        if (src == null) return null;
+        RenderTexture rt = new RenderTexture(w, h, 0, RenderTextureFormat.BGRA32);
+        rt.Create();
+        Graphics.Blit(src, rt);
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        RenderTexture.active = rt;
+        tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+        tex.Apply();
+        RenderTexture.active = null;
+        Destroy(rt);
+        return tex;
+    }
+
     /// <summary>
     /// Salva la depth raw a risoluzione nativa della depth camera (non
     /// registrata, non allineata all'RGB). Registrazione/allineamento
@@ -635,7 +700,7 @@ public class KeyFrameManager : MonoBehaviour
 
     Texture2D SaveAlignedDepthFrame(Texture depthTexArray, Matrix4x4 reprojMatrix,
     Vector3 rgbPos, Quaternion rgbRot, PassthroughCameraAccess.CameraIntrinsics intr, Vector4 zParams,
-    Vector2 currentResolution)
+    Vector2 currentResolution, int outWidth, int outHeight)
     {
         if (alignedDepthMaterial == null) { Debug.LogError("alignedDepthMaterial not assigned"); return null; }
 
@@ -653,9 +718,12 @@ public class KeyFrameManager : MonoBehaviour
         alignedDepthMaterial.SetVector("_CropRegion",
             CalcSensorCropRegion(intr.SensorResolution, currentResolution));
 
-        // Output alla risoluzione dell'immagine RGB corrente, così alignedDepth.exr
-        // combacia pixel-per-pixel con LeftRGB.png (niente stretch di aspect-ratio).
-        RenderTexture rt = new RenderTexture((int)currentResolution.x, (int)currentResolution.y, 0, RenderTextureFormat.ARGBFloat);
+        // Risoluzione di output parametrizzata (outWidth/outHeight): il crop sopra
+        // resta basato su currentResolution, quindi il frustum campionato è sempre il
+        // piano immagine RGB — qui cambia solo il numero di pixel della griglia. Con
+        // outW/outH = currentResolution si ottiene la coppia a risoluzione RGB; con
+        // outW/outH = risoluzione depth quella a risoluzione depth.
+        RenderTexture rt = new RenderTexture(outWidth, outHeight, 0, RenderTextureFormat.ARGBFloat);
         rt.Create();
         Graphics.Blit(depthTexArray, rt, alignedDepthMaterial);
         Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
@@ -709,10 +777,13 @@ public class KeyFrameManager : MonoBehaviour
 [System.Serializable]
 public struct CapturedKeyframe
 {
-    public Texture2D rgb;
-    public Texture2D rgbRight;
+    public Texture2D rgb;             // RGB sinistro, risoluzione RGB nativa
+    public Texture2D rgbRight;        // RGB destro, risoluzione RGB nativa
     public Texture2D rawDepth;
-    public Texture2D alignedDepth;
+    public Texture2D alignedDepth;    // depth allineata all'RGB, risoluzione RGB
+    public Texture2D rgbDepthRes;         // RGB sinistro ricampionato a risoluzione depth
+    public Texture2D rgbRightDepthRes;    // RGB destro ricampionato a risoluzione depth
+    public Texture2D alignedDepthDepthRes;// depth allineata all'RGB, risoluzione depth
     public Texture2D depthColored;    // point cloud colorato: depth -> 3D -> colore RGB
     public Vector3 position;          // posizione camera PCA sinistra
     public Vector3 RightCamPosition;  // posizione camera PCA destra
