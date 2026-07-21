@@ -40,6 +40,7 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] Material rawDepthMaterial;         // Shader DepthRawCopy: estrae la slice 0 del Texture2DArray senza modifiche
     [SerializeField] Material alignedDepthMaterial;     // Allinea la depth sul frame RGB della PCA
     [SerializeField] Material depthColorMaterial;       // Shader DepthColorReprojection: depth -> 3D -> colore RGB (point cloud colorato in layout depth)
+    [SerializeField] Material sobelMaterial;            // Shader DepthSobel: edge detection sulla depth allineata (metrica)
     [SerializeField] EnvironmentDepthManager environmentDepthManager; // Gate della cattura su IsDepthAvailable
     [SerializeField] Text debugText;
 
@@ -444,6 +445,12 @@ public class KeyFrameManager : MonoBehaviour
             passthroughCameraLeft.Intrinsics, zParams, currentRes,
             depthW, depthH);
 
+        // Sobel sulla depth allineata (edge detection sui valori metrici). Una versione
+        // per ciascuna risoluzione, così i bordi combaciano pixel-per-pixel con la
+        // rispettiva depth allineata da cui derivano.
+        Texture2D alignedDepthSobel = SaveDepthSobel(alignedDepth);
+        Texture2D alignedDepthSobelDepthRes = SaveDepthSobel(alignedDepthDepthRes);
+
         // Depth raw nativa + point cloud colorato (già a risoluzione depth).
         Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
         Texture2D depthColored = SaveDepthColored(
@@ -465,6 +472,8 @@ public class KeyFrameManager : MonoBehaviour
             rgbDepthRes = rgbDepthRes,
             rgbRightDepthRes = rgbRightDepthRes,
             alignedDepthDepthRes = alignedDepthDepthRes,
+            alignedDepthSobel = alignedDepthSobel,
+            alignedDepthSobelDepthRes = alignedDepthSobelDepthRes,
             depthColored = depthColored,
             position = pose.position,
             rotation = pose.rotation,
@@ -493,6 +502,8 @@ public class KeyFrameManager : MonoBehaviour
         Destroy(kf.rgbDepthRes);
         Destroy(kf.rgbRightDepthRes);
         Destroy(kf.alignedDepthDepthRes);
+        Destroy(kf.alignedDepthSobel);
+        Destroy(kf.alignedDepthSobelDepthRes);
         Destroy(kf.depthColored);
         Debug.Log($"Keyframe captured: {_keyframeCount} | pos: {pose.position} | depthTexId: {depthTexId}");
     }
@@ -535,6 +546,19 @@ public class KeyFrameManager : MonoBehaviour
         {
             byte[] alignedDepthResBytes = kf.alignedDepthDepthRes.EncodeToEXR();
             System.IO.File.WriteAllBytes($"{dir}/alignedDepth_depthRes.exr", alignedDepthResBytes);
+        }
+
+        // Sobel della depth allineata (magnitudine del gradiente in metri/texel),
+        // risoluzione RGB e risoluzione depth, float EXR.
+        if (kf.alignedDepthSobel != null)
+        {
+            byte[] sobelBytes = kf.alignedDepthSobel.EncodeToEXR();
+            System.IO.File.WriteAllBytes($"{dir}/alignedDepth_sobel.exr", sobelBytes);
+        }
+        if (kf.alignedDepthSobelDepthRes != null)
+        {
+            byte[] sobelDepthResBytes = kf.alignedDepthSobelDepthRes.EncodeToEXR();
+            System.IO.File.WriteAllBytes($"{dir}/alignedDepth_sobel_depthRes.exr", sobelDepthResBytes);
         }
 
         // Point cloud colorato (depth -> 3D -> colore RGB), risoluzione depth, PNG.
@@ -736,6 +760,29 @@ public class KeyFrameManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Applica il Sobel (shader Custom/DepthSobel) a una depth GIÀ allineata: legge la
+    /// depth metrica e restituisce la magnitudine del gradiente (metri/texel). L'output
+    /// eredita la risoluzione della depth allineata sorgente, quindi combacia con essa.
+    /// </summary>
+    Texture2D SaveDepthSobel(Texture2D alignedDepth)
+    {
+        if (alignedDepth == null) return null;
+        if (sobelMaterial == null) { Debug.LogError("sobelMaterial (Custom/DepthSobel) not assigned"); return null; }
+
+        // Target float: la magnitudine del gradiente è metrica, non va clampata a [0,1].
+        RenderTexture rt = new RenderTexture(alignedDepth.width, alignedDepth.height, 0, RenderTextureFormat.ARGBFloat);
+        rt.Create();
+        Graphics.Blit(alignedDepth, rt, sobelMaterial);
+        Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGBAFloat, false);
+        RenderTexture.active = rt;
+        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        tex.Apply();
+        RenderTexture.active = null;
+        Destroy(rt);
+        return tex;
+    }
+
+    /// <summary>
     /// Forward warp: depth -> 3D world -> colore RGB. Per ogni pixel della depth
     /// ricostruisce il punto 3D con l'inversa della reproj matrix, lo proietta nella
     /// camera RGB e ne campiona il colore. Output = point cloud colorato in layout
@@ -784,6 +831,8 @@ public struct CapturedKeyframe
     public Texture2D rgbDepthRes;         // RGB sinistro ricampionato a risoluzione depth
     public Texture2D rgbRightDepthRes;    // RGB destro ricampionato a risoluzione depth
     public Texture2D alignedDepthDepthRes;// depth allineata all'RGB, risoluzione depth
+    public Texture2D alignedDepthSobel;        // Sobel della depth allineata, risoluzione RGB
+    public Texture2D alignedDepthSobelDepthRes;// Sobel della depth allineata, risoluzione depth
     public Texture2D depthColored;    // point cloud colorato: depth -> 3D -> colore RGB
     public Vector3 position;          // posizione camera PCA sinistra
     public Vector3 RightCamPosition;  // posizione camera PCA destra

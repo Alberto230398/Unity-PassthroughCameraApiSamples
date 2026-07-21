@@ -1687,18 +1687,19 @@ MonoBehaviour:
   translationThreshold: 0.1
   rotationThreshold: 5
   maxHeadAngularSpeed: 30
-  maxRgbDepthMotionDeg: 3
-  maxRgbDepthMotionTransM: 0.03
-  motionAvgFrames: 4
-  motionAvgFps: 60
+  maxHeadTranslationSpeed: 0.5
+  MaximumPosDeviation: 0.1
+  MaximumRotDeviation: 5
   passthroughCameraLeft: {fileID: 1748868315344937867}
   passthroughCameraRight: {fileID: 964992456}
   leftCamera: {fileID: 499068566}
   rawDepthMaterial: {fileID: 2100000, guid: b50a8aa39b0a54083973b3150a6ea92c, type: 2}
   alignedDepthMaterial: {fileID: 2100000, guid: 1e576506abde8424aad3a94365f5f3cc, type: 2}
   depthColorMaterial: {fileID: 2100000, guid: 56ee7b5dadfce5443bb71cd82371f805, type: 2}
+  sobelMaterial: {fileID: 2100000, guid: 1276c2866f4799c449a1b26d1fa0cdd9, type: 2}
   environmentDepthManager: {fileID: 689678562}
   debugText: {fileID: 721019565}
+  maxHeadPoseHistorySize: 60
 --- !u!4 &2039053024
 Transform:
   m_ObjectHideFlags: 0
