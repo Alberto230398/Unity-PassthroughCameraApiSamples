@@ -27,55 +27,44 @@ public class HttpManager : MonoBehaviour
     CancellationTokenSource cts;   // per fermare il worker in modo pulito
     Task workerTask;               // riferimento al task, per aspettarlo alla chiusura
 
-    byte[] rgbTexture;
-    byte[] depthTexture;
-
     int keyframeIndex = 0;
 
-    async Task UploadKeyframe(int index)
-{
-    try
+    // I byte[] arrivano come argomenti: ogni task possiede i propri dati,
+    // niente campi condivisi che la cattura successiva possa sovrascrivere.
+    async Task UploadKeyframe(int index, byte[] rgb, byte[] depth)
     {
-        HttpContent textureContent = new ByteArrayContent(rgbTexture);
-        HttpContent depthContent = new ByteArrayContent(depthTexture); // Se hai anche una texture di profondità
+        try
+        {
+            HttpContent textureContent = new ByteArrayContent(rgb);
+            HttpContent depthContent = new ByteArrayContent(depth); // Se hai anche una texture di profondità
+            MultipartFormDataContent multipartContent = new MultipartFormDataContent();
+            multipartContent.Add(textureContent, "files", "LeftRGB.png");
+            multipartContent.Add(depthContent, "files", "Depth.exr");
 
-        MultipartFormDataContent multipartContent = new MultipartFormDataContent();
-        multipartContent.Add(textureContent, "files", "LeftRGB.png");
-        //multipartContent.Add(depthContent, "files", "Depth.exr");
+            var textureResp = await client.PostAsync($"{baseUrl}/keyframe/{index}", multipartContent);
+            textureResp.EnsureSuccessStatusCode();
 
-         HttpContent content = new StringContent(
-            $"{{\"Sent keyframe: \": {index}}}", System.Text.Encoding.UTF8, "application/json");
-            
-        var resp = await client.PostAsync($"{baseUrl}/ping", content); // /posts !
-        resp.EnsureSuccessStatusCode();
-
-        var textureResp = await client.PostAsync($"{baseUrl}/keyframe/{index}", multipartContent);
-        textureResp.EnsureSuccessStatusCode();
-
-        string body = await resp.Content.ReadAsStringAsync();
-        string textureBody = await textureResp.Content.ReadAsStringAsync();
-        Debug.Log($"[HTTP] OK {(int)resp.StatusCode} — risposta: {body}");
-        Debug.Log($"[HTTP] OK {(int)textureResp.StatusCode} — risposta: {textureBody}");
+            string textureBody = await textureResp.Content.ReadAsStringAsync();
+            Debug.Log($"[HTTP] keyframe {index} OK {(int)textureResp.StatusCode} — risposta: {textureBody}");
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[HTTP] keyframe {index} Errore: {e.Message}");
+        }
     }
-    catch (Exception e)
-    {
-        Debug.LogError($"[HTTP] Errore: {e.Message}");
-    }
-}
 
     void Start()
     {
         cts = new CancellationTokenSource();
-        //workerTask = Task.Run(() => UploadKeyframe(0));
     }
 
     public void SetRGBTexture(byte[] rgbText, byte[] depthText)
     {
-        rgbTexture = rgbText;
-        depthTexture = depthText; // Se hai anche una texture di profondità
-        Task.Run(() => UploadKeyframe(keyframeIndex));   // parte ORA che il dato c'e'
+        int index = keyframeIndex;   // fotografa l'indice ADESSO, in una locale
         keyframeIndex++;
 
+        // indice e byte[] passati come argomenti: la lambda cattura valori congelati
+        Task.Run(() => UploadKeyframe(index, rgbText, depthText));
     }
 
 }

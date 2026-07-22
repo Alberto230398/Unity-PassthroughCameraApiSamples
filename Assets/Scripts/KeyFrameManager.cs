@@ -503,7 +503,7 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
 
         // Depth allineata, registrata, risoluzione frame RGB, float EXR.
-        byte[] alignedDepthBytes = kf.alignedDepth.EncodeToEXR();
+        byte[] alignedDepthBytes = kf.alignedDepth.EncodeToEXR(Texture2D.EXRFlags.CompressZIP);
         System.IO.File.WriteAllBytes($"{dir}/alignedDepth.exr", alignedDepthBytes);
 
         // === Coppia a risoluzione DEPTH ===
