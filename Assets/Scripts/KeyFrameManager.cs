@@ -57,6 +57,12 @@ public class KeyFrameManager : MonoBehaviour
 
     private bool _firstKeyframeCaptured = false;
 
+    // === SCAN ON/OFF ===
+    // DEBUG: interruttore dello scan dell'ambiente. Se false, CaptureKeyframe()
+    // esce subito e non cattura nulla. Si commuta col tasto A del controller
+    // destro (vedi Update()). Default: true (scan attivo all'avvio).
+    private bool _scanEnabled = true;
+
     private uint _lastCapturedDepthTexId = uint.MaxValue;
 
     private uint _lastSeenDepthTexId = uint.MaxValue;
@@ -93,12 +99,47 @@ public class KeyFrameManager : MonoBehaviour
         Application.onBeforeRender -= CaptureKeyframe;
     }
 
+    void Update()
+    {
+        // DEBUG: tasto A del controller destro (RawButton.A = A fisico del Touch destro).
+        // Un solo tasto per tutto. GetDown = solo il frame della pressione (un click = un'azione).
+        //   - scan SPENTO -> lo riaccende, niente invio.
+        //   - scan ACCESO -> lo spegne E invia i keyframe (fine scan).
+        if (OVRInput.GetDown(OVRInput.RawButton.A))
+        {
+            if (!_scanEnabled)
+            {
+                // era spento -> riparte lo scan
+                _scanEnabled = true;
+                Debug.Log("[SCAN] Scan ABILITATO (tasto A)");
+                if (debugText != null)
+                    debugText.text = $"Scan attiva, kf = {_keyframeCount}";
+            }
+            else
+            {
+                // era acceso -> ferma lo scan e invia
+                _scanEnabled = false;
+                Debug.Log("[SEND] Scan DISABILITATO, avvio invio keyframe (tasto A)");
+                // _keyframeCount = numero di keyframe catturati/salvati = quelli che verranno inviati.
+                if (debugText != null)
+                    debugText.text = $"Scan disattivata, kf inviati: {_keyframeCount}";
+                RetrieveAndSendData();
+            }
+        }
+    }
+
     // Ordine 100 > 0 del manager Meta -> giriamo SEMPRE dopo che i global depth
     // sono stati aggiornati col frame corrente.
     [BeforeRenderOrder(100)]
     void CaptureKeyframe()
     {
         Debug.Log("-----------CaptureKeyframe() called at time: " + System.DateTime.Now.ToString("HH:mm:ss.fff") + "-----------");
+
+        // === GATE SCAN ON/OFF ===
+        // DEBUG: se lo scan e' disabilitato (tasto A, vedi Update()) non catturiamo nulla.
+        // Se durante un test non vengono salvati keyframe, controlla PRIMA questo flag.
+        if (!_scanEnabled) return;
+
         // === CONTROLLI DI VALIDITÀ ===
         // Se la depth non è disponibile o la camera PCA non sta girando, esci subito.
         if (environmentDepthManager == null || !environmentDepthManager.IsDepthAvailable) return;
@@ -211,51 +252,7 @@ public class KeyFrameManager : MonoBehaviour
         _lastKeyframeRotation = pose.rotation;
     }
 
-    // Aggiunge un record al buffer di log e lo scrive su disco a intervalli regolari
-    // (oltre che a ogni cattura). Il campo "outcome" dice cosa è successo:
-    //   "captured"       -> keyframe salvato su disco (keyframeIndex valido)
-    //   "skip_head_fast" -> scartato dal Gate 2 (testa troppo veloce)
-    //   "skip_spacing"   -> scartato dal Gate 3 (troppo vicino all'ultimo keyframe)
-    void LogEvent(string outcome, uint depthTexId, float headAngularSpeed, Pose headPose,
-                  int keyframeIndex, float translationFromLast, float rotationFromLast)
-    {
-        var now = System.DateTime.UtcNow;
-        // "Età" del frame RGB: quanti ms sono passati da quando la camera lo ha
-        // esposto a adesso. Se è alta e la testa si muove, è un indizio di skew
-        // temporale tra lo stream RGB e quello depth.
-        float rgbAgeMs = (float)(now - passthroughCameraLeft.Timestamp).TotalMilliseconds;
-
-        // Confronto diretto tra la pose della camera RGB (al suo istante di cattura) e
-        // la pose della camera DEPTH (estratta dalla reproj matrix = istante di cattura
-        // della depth). skewAngleDeg è il disallineamento rotazionale reale in gradi.
-        bool skewValid = TryComputeDepthRgbSkew(headPose, out Vector3 rgbFwd, out Vector3 depthFwd,
-                                                out Vector3 depthEye, out float skewAngleDeg, out float posDiffM);
-
-        _log.entries.Add(new KeyframeLogEntry
-        {
-            frame = Time.frameCount,
-            appTime = Time.realtimeSinceStartupAsDouble,
-            systemTimeUtc = now.ToString("HH:mm:ss.fff"),
-            outcome = outcome,
-            keyframeIndex = keyframeIndex,
-            depthTexId = depthTexId,
-            headAngularSpeed = headAngularSpeed,
-            rgbTimestampUtc = passthroughCameraLeft.Timestamp.ToString("HH:mm:ss.fff"),
-            rgbAgeMs = rgbAgeMs,
-            headPos = headPose.position,
-            headRot = new Vector4(headPose.rotation.x, headPose.rotation.y,
-                                  headPose.rotation.z, headPose.rotation.w),
-            translationFromLast = translationFromLast,
-            rotationFromLast = rotationFromLast,
-            skewValid = skewValid,
-            rgbForward = rgbFwd,
-            depthForward = depthFwd,
-            depthEyePos = depthEye,
-            skewAngleDeg = skewAngleDeg,
-            posDiffM = posDiffM,
-        });
-    }
-
+    
     // Confronta la pose della camera RGB con la pose della camera DEPTH nel momento
     // in cui ciascun frame è stato catturato.
     //
@@ -443,8 +440,9 @@ public class KeyFrameManager : MonoBehaviour
         var intrinsics = passthroughCameraLeft.Intrinsics;
         var rightIntrinsics = passthroughCameraRight.Intrinsics;
 
+        // A scan attiva: mostra il conteggio incrementale dei keyframe catturati.
         if (debugText != null)
-            debugText.text = $"kf={_keyframeCount} depthTexId={depthTexId} t={Time.realtimeSinceStartupAsDouble:F3}";
+            debugText.text = $"Scan attiva, kf = {_keyframeCount}";
 
         var kf = new CapturedKeyframe
         {
@@ -623,8 +621,25 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllText($"{dir}/reprojection_inverse.json", reprojInverse);
         System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
         System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
+    }
 
-        HttpManager.httpMng.SetRGBTexture(rgbBytes, alignedDepthBytes);
+    void RetrieveAndSendData()
+    {
+        // Costruiamo SOLO il path della cartella che contiene tutti i keyframe
+        // salvati in locale (persistentDataPath/keyframes) e lo passiamo come
+        // stringa a HttpManager. Zip + invio sono responsabilita' di HttpManager,
+        // qui non tocchiamo file ne' rete.
+        string keyframesDir = $"{Application.persistentDataPath}/keyframes";
+
+        // DEBUG: se l'invio non parte, verifica che questa cartella esista e sia piena.
+        if (!System.IO.Directory.Exists(keyframesDir))
+        {
+            Debug.LogWarning($"[SEND] Cartella keyframe inesistente: {keyframesDir}");
+            return;
+        }
+
+        Debug.Log($"[SEND] Passo la cartella a HttpManager: {keyframesDir}");
+        HttpManager.httpMng.SendKeyframesFolderAsync(keyframesDir);
     }
 
     // Legge un render target RGBA in una Texture2D CPU-side per encoding/salvataggio.

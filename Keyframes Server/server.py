@@ -11,10 +11,16 @@ Avvio:
     --host 0.0.0.0  = accessibile dal visore tramite l'IP del PC in LAN
     --port 8000     = porta (cambiala se e' gia' occupata)
 
-I file finiscono in:  <cartella di questo script>/keyframes/<index>/
-Sfogliabili da browser in LAN:  http://<IP-del-PC>:8000/files/<index>/<nomefile>
+Due modalita' di invio:
+  - POST /keyframe/<index>  -> singolo keyframe (multipart), salvato in keyframes/<index>/
+  - POST /scan              -> intera scansione zippata (streaming), estratta in scans/scan_<ts>/
+
+Sfogliabili da browser in LAN:
+  http://<IP-del-PC>:8000/files/<index>/<nomefile>       (singoli keyframe)
+  http://<IP-del-PC>:8000/scans/scan_<ts>/<index>/...    (scansioni)
 """
 
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -27,6 +33,10 @@ from fastapi.staticfiles import StaticFiles
 # salvare altrove, es:  BASE = Path("D:/MieiKeyframe")
 BASE = Path(__file__).parent / "keyframes"
 BASE.mkdir(parents=True, exist_ok=True)
+
+# Cartella per le scansioni intere (una sottocartella con timestamp per ognuna).
+SCANS = Path(__file__).parent / "scans"
+SCANS.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Keyframes Server")
 
@@ -70,6 +80,61 @@ async def upload_keyframe(index: int, files: list[UploadFile]):
     return {"ok": True, "index": index, "saved": saved, "bytes": total_bytes}
 
 
+# --- Upload di un'intera scansione zippata ---------------------------------
+@app.post("/scan")
+async def upload_scan(request: Request):
+    """
+    Riceve l'intera cartella keyframes zippata (corpo grezzo, content-type
+    application/zip) e la estrae in scans/scan_<timestamp>/.
+
+    Pensato per scansioni grandi (ordine del GB):
+      1) lo zip in arrivo viene scritto su disco a blocchi -> la RAM non
+         vede mai il file intero;
+      2) l'estrazione avviene un file alla volta (zipfile decomprime in
+         streaming, non carica tutto l'archivio in memoria).
+    """
+    session = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = SCANS / f"scan_{session}"
+    dest.mkdir(parents=True, exist_ok=True)
+    dest_root = dest.resolve()
+    tmp_zip = dest / "_incoming.zip"
+
+    # 1) Streaming del corpo (lo zip) su disco, a blocchi.
+    size = 0
+    with open(tmp_zip, "wb") as f:
+        async for chunk in request.stream():
+            f.write(chunk)
+            size += len(chunk)
+
+    log(f"scan {session}: ricevuti {size / 1024 / 1024:.1f} MB, estrazione...")
+
+    # 2) Estrazione entry per entry (con protezione contro percorsi zip-slip).
+    try:
+        extracted = 0
+        with zipfile.ZipFile(tmp_zip) as z:
+            for member in z.infolist():
+                target = (dest / member.filename).resolve()
+                if not str(target).startswith(str(dest_root)):
+                    raise ValueError(f"percorso sospetto nello zip: {member.filename}")
+                z.extract(member, dest)
+                if not member.is_dir():
+                    extracted += 1
+    except zipfile.BadZipFile:
+        tmp_zip.unlink(missing_ok=True)
+        log(f"scan {session}: zip corrotto o incompleto")
+        return JSONResponse({"error": "zip corrotto o incompleto"}, status_code=400)
+
+    tmp_zip.unlink(missing_ok=True)  # lo zip non serve piu' dopo l'estrazione
+
+    log(f"scan {session}: {extracted} file estratti -> {dest}")
+    return {
+        "ok": True,
+        "session": session,
+        "files": extracted,
+        "received_MB": round(size / 1024 / 1024, 1),
+    }
+
+
 # --- Utility di consultazione ----------------------------------------------
 @app.get("/")
 async def status():
@@ -100,8 +165,10 @@ async def list_keyframe(index: int):
 
 
 # --- Download / anteprima da browser ---------------------------------------
-# http://<IP>:8000/files/<index>/<nomefile>
+# http://<IP>:8000/files/<index>/<nomefile>        (singoli keyframe)
+# http://<IP>:8000/scans/scan_<ts>/<index>/...      (scansioni intere)
 app.mount("/files", StaticFiles(directory=BASE), name="files")
+app.mount("/scans", StaticFiles(directory=SCANS), name="scans")
 
 
 if __name__ == "__main__":
