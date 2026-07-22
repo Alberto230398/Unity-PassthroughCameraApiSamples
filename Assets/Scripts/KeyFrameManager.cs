@@ -40,7 +40,13 @@ public class KeyFrameManager : MonoBehaviour
     [SerializeField] Material rawDepthMaterial;         // Shader DepthRawCopy: estrae la slice 0 del Texture2DArray senza modifiche
     [SerializeField] Material alignedDepthMaterial;     // Allinea la depth sul frame RGB della PCA
     [SerializeField] Material depthColorMaterial;       // Shader DepthColorReprojection: depth -> 3D -> colore RGB (point cloud colorato in layout depth)
-    [SerializeField] Material sobelMaterial;            // Shader DepthSobel: edge detection sulla depth allineata (metrica)
+    [SerializeField] Material sobelMaterial;            // Shader DepthSobel: gate del gradiente relativo sulla depth allineata (metrica)
+    // Soglia del gradiente relativo del Sobel (|∇D|/D). Va tenuta separata per le due
+    // risoluzioni: a risoluzione depth (320x320) ogni texel copre più scena, quindi la
+    // stessa discontinuità dà un gradiente più alto e serve una soglia più permissiva.
+    // <= 0 disattiva il gate (passthrough della depth). Regolabili da Inspector.
+    [SerializeField] float sobelTauRelRGBRes = 0.05f;   // per l'aligned depth a risoluzione RGB
+    [SerializeField] float sobelTauRelDepthRes = 0.15f; // per l'aligned depth a risoluzione depth
     [SerializeField] EnvironmentDepthManager environmentDepthManager; // Gate della cattura su IsDepthAvailable
     [SerializeField] Text debugText;
 
@@ -448,8 +454,8 @@ public class KeyFrameManager : MonoBehaviour
         // Depth allineata col gate del gradiente relativo (edge-bleeding azzerato).
         // Una versione per ciascuna risoluzione, così combacia pixel-per-pixel con la
         // rispettiva depth allineata.
-        Texture2D alignedDepthSobel = SaveDepthSobel(alignedDepth);
-        Texture2D alignedDepthSobelDepthRes = SaveDepthSobel(alignedDepthDepthRes);
+        Texture2D alignedDepthSobel = SaveDepthSobel(alignedDepth, sobelTauRelRGBRes);
+        Texture2D alignedDepthSobelDepthRes = SaveDepthSobel(alignedDepthDepthRes, sobelTauRelDepthRes);
 
         // Depth raw nativa + point cloud colorato (già a risoluzione depth).
         Texture2D rawDepth = SaveDepthFrameRaw(depthTex);
@@ -762,13 +768,20 @@ public class KeyFrameManager : MonoBehaviour
     /// <summary>
     /// Applica il gate del gradiente relativo (shader Custom/DepthSobel) a una depth GIÀ
     /// allineata: emette la DEPTH MASCHERATA, cioè il valore metrico originale dove
-    /// |∇D|/D <= tau_rel e 0 dove il pixel viene scartato (edge-bleeding) o è invalido.
+    /// |∇D|/D <= tauRel e 0 dove il pixel viene scartato (edge-bleeding) o è invalido.
     /// L'output eredita la risoluzione della depth allineata sorgente.
     /// </summary>
-    Texture2D SaveDepthSobel(Texture2D alignedDepth)
+    /// <param name="tauRel">Soglia del gradiente relativo passata allo shader per QUESTO
+    /// blit. Va scelta in base alla risoluzione della depth sorgente (più alta a bassa
+    /// risoluzione). <= 0 disattiva il gate (passthrough).</param>
+    Texture2D SaveDepthSobel(Texture2D alignedDepth, float tauRel)
     {
         if (alignedDepth == null) return null;
         if (sobelMaterial == null) { Debug.LogError("sobelMaterial (Custom/DepthSobel) not assigned"); return null; }
+
+        // Soglia impostata per-blit: il materiale è condiviso, ma i blit sono sequenziali
+        // sul main thread, quindi ogni chiamata usa il proprio tauRel.
+        sobelMaterial.SetFloat("_TauRel", tauRel);
 
         // Target float: la depth mascherata è metrica, non va clampata a [0,1].
         RenderTexture rt = new RenderTexture(alignedDepth.width, alignedDepth.height, 0, RenderTextureFormat.ARGBFloat);
