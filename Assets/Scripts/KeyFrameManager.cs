@@ -85,14 +85,6 @@ public class KeyFrameManager : MonoBehaviour
     void OnDisable()
     {
         Application.onBeforeRender -= CaptureKeyframe;
-        FlushLog(); // salva su disco gli ultimi record non ancora scritti
-    }
-
-    // Su Quest l'app viene messa in pausa quando togli il visore o esci: salviamo
-    // il log in quel momento, così non perdiamo i record accumulati in memoria.
-    void OnApplicationPause(bool paused)
-    {
-        if (paused) FlushLog();
     }
 
     // Ordine 100 > 0 del manager Meta -> giriamo SEMPRE dopo che i global depth
@@ -256,21 +248,6 @@ public class KeyFrameManager : MonoBehaviour
             skewAngleDeg = skewAngleDeg,
             posDiffM = posDiffM,
         });
-
-        // Flush periodico (ogni 2s) e sempre dopo una cattura: così un eventuale
-        // crash/chiusura fa perdere al massimo pochi record.
-        if (outcome == "captured" || Time.realtimeSinceStartupAsDouble - _lastLogFlushTime > 2.0)
-            FlushLog();
-    }
-
-    // Scrive l'intero buffer di log come JSON leggibile su disco, accanto ai keyframe.
-    void FlushLog()
-    {
-        if (_log.entries.Count == 0) return;
-        string dir = $"{Application.persistentDataPath}/keyframes";
-        System.IO.Directory.CreateDirectory(dir);
-        System.IO.File.WriteAllText($"{dir}/capture_log.json", JsonUtility.ToJson(_log, true));
-        _lastLogFlushTime = Time.realtimeSinceStartupAsDouble;
     }
 
     // Confronta la pose della camera RGB con la pose della camera DEPTH nel momento
