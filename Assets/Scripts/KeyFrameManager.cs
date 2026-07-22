@@ -617,6 +617,8 @@ public class KeyFrameManager : MonoBehaviour
         System.IO.File.WriteAllText($"{dir}/reprojection_inverse.json", reprojInverse);
         System.IO.File.WriteAllText($"{dir}/zbuffer_params.json", zbuf);
         System.IO.File.WriteAllText($"{dir}/depth_meta.json", depthMeta);
+
+        HttpManager.httpMng.SetRGBTexture(rgbBytes, alignedDepthBytes);
     }
 
     // Legge un render target RGBA in una Texture2D CPU-side per encoding/salvataggio.
