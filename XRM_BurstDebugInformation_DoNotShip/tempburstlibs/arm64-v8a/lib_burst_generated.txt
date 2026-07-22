@@ -10,7 +10,6 @@ Library: C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutp
 --target-framework=NetFramework
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\Burst
---debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.3.13f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Library\Burst
 --output=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutput\tempburstlibs\arm64-v8a\lib_burst_generated
@@ -118,7 +117,6 @@ Library: C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutp
 --float-mode=Fast
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\Burst
---debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.3.13f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Library\Burst
 --output=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutput\tempburstlibs\arm64-v8a\lib_burst_generated
@@ -194,7 +192,6 @@ Library: C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutp
 --float-mode=Fast
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\Burst
---debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.3.13f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Library\Burst
 --output=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutput\tempburstlibs\arm64-v8a\lib_burst_generated
@@ -212,7 +209,6 @@ Library: C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutp
 --target-framework=NetFramework
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\Burst
---debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.3.13f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Library\Burst
 --output=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutput\tempburstlibs\arm64-v8a\lib_burst_generated
@@ -230,7 +226,6 @@ Library: C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutp
 --target-framework=NetFramework
 --generate-link-xml=Temp\burst.link.xml
 --temp-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\Burst
---debug=Full
 --key-folder=C:/Program Files/Unity/Hub/Editor/6000.3.13f1/Editor/Data/PlaybackEngines/AndroidPlayer
 --decode-folder=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Library\Burst
 --output=C:\Users\danie\Desktop\Unity-PassthroughCameraApiSamples\Temp\BurstOutput\tempburstlibs\arm64-v8a\lib_burst_generated

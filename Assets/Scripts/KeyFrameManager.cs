@@ -445,9 +445,9 @@ public class KeyFrameManager : MonoBehaviour
             passthroughCameraLeft.Intrinsics, zParams, currentRes,
             depthW, depthH);
 
-        // Sobel sulla depth allineata (edge detection sui valori metrici). Una versione
-        // per ciascuna risoluzione, così i bordi combaciano pixel-per-pixel con la
-        // rispettiva depth allineata da cui derivano.
+        // Depth allineata col gate del gradiente relativo (edge-bleeding azzerato).
+        // Una versione per ciascuna risoluzione, così combacia pixel-per-pixel con la
+        // rispettiva depth allineata.
         Texture2D alignedDepthSobel = SaveDepthSobel(alignedDepth);
         Texture2D alignedDepthSobelDepthRes = SaveDepthSobel(alignedDepthDepthRes);
 
@@ -548,7 +548,7 @@ public class KeyFrameManager : MonoBehaviour
             System.IO.File.WriteAllBytes($"{dir}/alignedDepth_depthRes.exr", alignedDepthResBytes);
         }
 
-        // Sobel della depth allineata (magnitudine del gradiente in metri/texel),
+        // Depth allineata col gate del gradiente relativo (edge-bleeding azzerato),
         // risoluzione RGB e risoluzione depth, float EXR.
         if (kf.alignedDepthSobel != null)
         {
@@ -760,16 +760,17 @@ public class KeyFrameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Applica il Sobel (shader Custom/DepthSobel) a una depth GIÀ allineata: legge la
-    /// depth metrica e restituisce la magnitudine del gradiente (metri/texel). L'output
-    /// eredita la risoluzione della depth allineata sorgente, quindi combacia con essa.
+    /// Applica il gate del gradiente relativo (shader Custom/DepthSobel) a una depth GIÀ
+    /// allineata: emette la DEPTH MASCHERATA, cioè il valore metrico originale dove
+    /// |∇D|/D <= tau_rel e 0 dove il pixel viene scartato (edge-bleeding) o è invalido.
+    /// L'output eredita la risoluzione della depth allineata sorgente.
     /// </summary>
     Texture2D SaveDepthSobel(Texture2D alignedDepth)
     {
         if (alignedDepth == null) return null;
         if (sobelMaterial == null) { Debug.LogError("sobelMaterial (Custom/DepthSobel) not assigned"); return null; }
 
-        // Target float: la magnitudine del gradiente è metrica, non va clampata a [0,1].
+        // Target float: la depth mascherata è metrica, non va clampata a [0,1].
         RenderTexture rt = new RenderTexture(alignedDepth.width, alignedDepth.height, 0, RenderTextureFormat.ARGBFloat);
         rt.Create();
         Graphics.Blit(alignedDepth, rt, sobelMaterial);
