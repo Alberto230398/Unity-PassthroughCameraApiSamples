@@ -654,6 +654,7 @@ MonoBehaviour:
   videoSources:
   - {fileID: 230628489}
   activeSourceIndex: 0
+  autoStream: 1
 --- !u!4 &287669439
 Transform:
   m_ObjectHideFlags: 0
@@ -664,52 +665,6 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -1.1686413, y: 0.048824906, z: -3.243351}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 800793797}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &296558219
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 296558221}
-  - component: {fileID: 296558220}
-  m_Layer: 0
-  m_Name: PassthroughController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &296558220
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 296558219}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2dcfb7d6862824de09c48160adcd3683, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PassthroughController
-  PCALeft: {fileID: 1748868315344937867}
-  rawImage: {fileID: 1653144499}
---- !u!4 &296558221
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 296558219}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -2.92669, y: 0, z: 2.8748298}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1109,7 +1064,7 @@ PrefabInstance:
     - target: {fileID: 2368249234961555894, guid: fc37eb1b44a21ec42a0fd776d762b410, type: 3}
       propertyPath: passthroughController
       value: 
-      objectReference: {fileID: 296558220}
+      objectReference: {fileID: 0}
     - target: {fileID: 3439421267489493614, guid: fc37eb1b44a21ec42a0fd776d762b410, type: 3}
       propertyPath: m_Name
       value: TextureBlender
@@ -3689,7 +3644,6 @@ Transform:
   - {fileID: 1684323196}
   - {fileID: 830222542}
   - {fileID: 573035818}
-  - {fileID: 296558221}
   - {fileID: 230628490}
   - {fileID: 1241523486}
   - {fileID: 287669439}
@@ -3779,7 +3733,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &917117692
 MonoBehaviour:
   m_ObjectHideFlags: 0
