@@ -32,13 +32,17 @@ public class HttpManager : MonoBehaviour
 
     // I byte[] arrivano come argomenti: ogni task possiede i propri dati,
     // niente campi condivisi che la cattura successiva possa sovrascrivere.
-    async Task UploadKeyframe(int index, byte[] rgb, byte[] depth, string LeftPose, string RGBInstrinsics, string reprojMatrix, string zBuf, string depthRes)
+    async Task UploadKeyframe(int index, byte[] rgb, byte[] rgbDepthRes, byte[] depth, byte[] DepthLowRes, byte[] sobelLowRes, string LeftPose, string RGBInstrinsics, string reprojMatrix, string zBuf, string depthRes)
     {
         try
         {
             // Sistemo le foto
             HttpContent textureContent = new ByteArrayContent(rgb);
+            HttpContent rgbDepthResContent = new ByteArrayContent(rgbDepthRes);
             HttpContent depthContent = new ByteArrayContent(depth); // Se hai anche una texture di profondità
+            HttpContent DepthLowResContent = new ByteArrayContent(DepthLowRes); // Se hai anche una texture di profondità
+            HttpContent sobelLowResContent = new ByteArrayContent(sobelLowRes); // Se hai anche una texture di profondità
+
 
             // Sistemo i JSON
             HttpContent poseContent = new StringContent(LeftPose, System.Text.Encoding.UTF8, "application/json");
@@ -49,7 +53,10 @@ public class HttpManager : MonoBehaviour
 
             MultipartFormDataContent multipartContent = new MultipartFormDataContent();
             multipartContent.Add(textureContent, "files", "LeftRGB.png");
+            multipartContent.Add(rgbDepthResContent, "files", "RGBDepthResolution.exr");
             multipartContent.Add(depthContent, "files", "Depth.exr");
+            multipartContent.Add(DepthLowResContent, "files", "DepthLowRes.exr");
+            multipartContent.Add(sobelLowResContent, "files", "SobelLowRes.exr");
             multipartContent.Add(poseContent, "files", "LeftPose.json");
             multipartContent.Add(rgbIntrinsicsContent, "files", "RGBIntrinsics.json");
             multipartContent.Add(reprojMatrixContent, "files", "Reprojection.json");
@@ -73,13 +80,13 @@ public class HttpManager : MonoBehaviour
         cts = new CancellationTokenSource();
     }
 
-    public void SetRGBTexture(byte[] rgbText, byte[] depthText, string LeftPose, string RGBInstrinsics, string reprojMatrix, string zBuf, string depthRes)
+    public void SetRGBTexture(byte[] rgbText, byte[] rgbDepthResText, byte[] depthText, byte[] DepthLowRes, byte[] sobelLowRes, string LeftPose, string RGBInstrinsics, string reprojMatrix, string zBuf, string depthRes)
     {
         int index = keyframeIndex;   // fotografa l'indice ADESSO, in una locale
         keyframeIndex++;
 
         // indice e byte[] passati come argomenti: la lambda cattura valori congelati
-        Task.Run(() => UploadKeyframe(index, rgbText, depthText, LeftPose, RGBInstrinsics, reprojMatrix, zBuf, depthRes));
+        Task.Run(() => UploadKeyframe(index, rgbText, rgbDepthResText, depthText, DepthLowRes, sobelLowRes, LeftPose, RGBInstrinsics, reprojMatrix, zBuf, depthRes));
     }
 
     // Riceve il path della cartella keyframe da KeyFrameManager, la zippa e la

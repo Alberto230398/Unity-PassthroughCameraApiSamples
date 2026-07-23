@@ -516,35 +516,35 @@ public class KeyFrameManager : MonoBehaviour
 
         // === Coppia a risoluzione DEPTH ===
         // RGB (sinistro/destro) ricampionato a risoluzione depth, PNG.
-        if (kf.rgbDepthRes != null)
-        {
+        //if (kf.rgbDepthRes != null)
+        //{
             byte[] rgbDepthResBytes = kf.rgbDepthRes.EncodeToPNG();
             System.IO.File.WriteAllBytes($"{dir}/LeftRGB_depthRes.png", rgbDepthResBytes);
-        }
+        //}
         if (kf.rgbRightDepthRes != null)
         {
             byte[] rgbRightDepthResBytes = kf.rgbRightDepthRes.EncodeToPNG();
             System.IO.File.WriteAllBytes($"{dir}/RightRGB_depthRes.png", rgbRightDepthResBytes);
         }
         // Depth allineata all'RGB ma renderizzata a risoluzione depth, float EXR.
-        if (kf.alignedDepthDepthRes != null)
-        {
-            byte[] alignedDepthResBytes = kf.alignedDepthDepthRes.EncodeToEXR();
+        //if (kf.alignedDepthDepthRes != null)
+        //{
+            byte[] alignedDepthResBytes = kf.alignedDepthDepthRes.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat | Texture2D.EXRFlags.CompressZIP);
             System.IO.File.WriteAllBytes($"{dir}/alignedDepth_depthRes.exr", alignedDepthResBytes);
-        }
+        //}
 
         // Depth allineata col gate del gradiente relativo (edge-bleeding azzerato),
         // risoluzione RGB e risoluzione depth, float EXR.
-        if (kf.alignedDepthSobel != null)
-        {
-            byte[] sobelBytes = kf.alignedDepthSobel.EncodeToEXR();
+        //if (kf.alignedDepthSobel != null)
+        //{
+            byte[] sobelBytes = kf.alignedDepthSobel.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat | Texture2D.EXRFlags.CompressZIP);
             System.IO.File.WriteAllBytes($"{dir}/alignedDepth_sobel.exr", sobelBytes);
-        }
-        if (kf.alignedDepthSobelDepthRes != null)
-        {
-            byte[] sobelDepthResBytes = kf.alignedDepthSobelDepthRes.EncodeToEXR();
+        //}
+        //if (kf.alignedDepthSobelDepthRes != null)
+        //{
+            byte[] sobelDepthResBytes = kf.alignedDepthSobelDepthRes.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat | Texture2D.EXRFlags.CompressZIP);
             System.IO.File.WriteAllBytes($"{dir}/alignedDepth_sobel_depthRes.exr", sobelDepthResBytes);
-        }
+        //}
 
         // Point cloud colorato (depth -> 3D -> colore RGB), risoluzione depth, PNG.
         if (kf.depthColored != null)
@@ -614,7 +614,7 @@ public class KeyFrameManager : MonoBehaviour
         float CamDistance = Vector3.Distance(LeftPose.position, rightCamPose.position);
 
         // ---------------INVIO FRAME BY FRAME---------------- 
-        HttpManager.httpMng.SetRGBTexture(rgbBytes, alignedDepthBytes, pose, RGBIntrinsics, reproj, zbuf, depthMeta);
+        HttpManager.httpMng.SetRGBTexture(rgbBytes, rgbDepthResBytes, alignedDepthBytes, alignedDepthResBytes, sobelDepthResBytes, pose, RGBIntrinsics, reproj, zbuf, depthMeta);
 
         System.IO.File.WriteAllText($"{dir}/LeftCamPose.json", pose);
         System.IO.File.WriteAllText($"{dir}/RightCamPose.json", rightPose);
