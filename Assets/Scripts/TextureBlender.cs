@@ -23,7 +23,7 @@ public class TextureBlender : MonoBehaviour
 
         //Graphics.Blit(null, VRTexture, blendMat);
 
-        StartCoroutine(LogSensorInfo());
+        //StartCoroutine(LogSensorInfo());
     }
 
     // Diagnostica: stampa la risoluzione REALE della camera (che può differire da
