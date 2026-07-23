@@ -8,7 +8,7 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/PassthroughCameraApiSamples/StartScene/StartScene.unity
     guid: 69e1b31c45bac42f88f75017ee404de1
-  - enabled: 0
+  - enabled: 1
     path: Assets/Scenes/1. Streaming.unity
     guid: ad5bb12b10679b840999aa322aa7a491
   - enabled: 0
@@ -29,7 +29,7 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/3. Compositing.unity
     guid: d2b980afe30cf4ed7933ee802bf39f7e
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/1.2 Microphone Access.unity
     guid: cf274bf24df46479ba3399f05c93bd57
   m_configObjects:

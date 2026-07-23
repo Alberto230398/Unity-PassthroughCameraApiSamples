@@ -17,11 +17,15 @@ public class VideoManager : MonoBehaviour
     RenderTexture camRenderTexture;
     VideoInterface currentSource;
     WebRTCConnection _webRTCConnection;
+    VideoStreamTrack _videoStreamTrack;
 
-    void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
-    void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
+    // L'evento WebRTCConnection.OnRequestVideoTrack era una modifica custom al pacchetto:
+    // spariva ad ogni aggiornamento. Ora iniettiamo il video track via reflection sull'API
+    // pubblica WebRTCManager.AddVideoTrack, così il pacchetto resta vanilla e aggiornabile.
+    //void OnEnable() => WebRTCConnection.OnRequestVideoTrack += CreateVideo;
+    //void OnDisable() => WebRTCConnection.OnRequestVideoTrack -= CreateVideo;
 
-    void OnWebRTCConnected() => StartCoroutine(ApplyBitrateCap());
+    void OnWebRTCConnected() { }
 
     bool videoActive;
 
@@ -42,12 +46,43 @@ public class VideoManager : MonoBehaviour
         if (OVRInput.GetDown(OVRInput.Button.One))
         {
             _webRTCConnection ??= FindAnyObjectByType<WebRTCConnection>();
-            if (_webRTCConnection != null && !_webRTCConnection.IsVideoTransmissionActive)
+            if (_webRTCConnection != null && !videoActive)
             {
-                _webRTCConnection.StartVideoTransmission();
-                Debug.Log("[VideoManager] Button A → StartVideoTransmission");
+                StartVideoInjection();
+                Debug.Log("[VideoManager] Button A → StartVideoInjection");
             }
         }
+    }
+
+    // Inietta la RenderTexture della sorgente come video track WebRTC senza passare per
+    // StartVideoTransmission() del pacchetto (che richiederebbe una StreamingCamera assegnata,
+    // andando altrimenti in NullReference). Sostituisce il vecchio evento OnRequestVideoTrack.
+    void StartVideoInjection()
+    {
+        var manager = GetWebRTCManager();
+        if (manager == null)
+        {
+            Debug.LogWarning("[VideoManager] WebRTCManager non pronto: connetti il WebRTC prima di avviare il video.");
+            return;
+        }
+
+        var rt = CreateVideo();                       // crea camRenderTexture + avvia il blit della sorgente
+        _videoStreamTrack = new VideoStreamTrack(rt); // stesso costruttore usato dal pacchetto per l'immersive
+
+        var addMethod = manager.GetType().GetMethod("AddVideoTrack",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+        if (addMethod == null)
+        {
+            Debug.LogError("[VideoManager] WebRTCManager.AddVideoTrack non trovato: l'API del pacchetto è cambiata.");
+            _videoStreamTrack.Dispose();
+            _videoStreamTrack = null;
+            return;
+        }
+        addMethod.Invoke(manager, new object[] { _videoStreamTrack });
+
+        videoActive = true;
+        StartCoroutine(ApplyBitrateCap());            // applica il cap sui sender appena creati
+        Debug.Log("[VideoManager] Video track iniettato via reflection (AddVideoTrack)");
     }
 
     // VideoManager
@@ -102,12 +137,18 @@ public class VideoManager : MonoBehaviour
         if (senders != null && senders.Count > 0) ApplyCap(senders);
     }
 
-    // Legge il dizionario privato videoTrackSenders dal WebRTCManager via reflection.
-    System.Collections.Generic.Dictionary<string, RTCRtpSender> GetVideoSenders()
+    // Legge il campo privato webRTCManager dal WebRTCConnection via reflection.
+    object GetWebRTCManager()
     {
         var managerField = typeof(SimpleWebRTC.WebRTCConnection)
             .GetField("webRTCManager", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        var manager = managerField?.GetValue(_webRTCConnection);
+        return managerField?.GetValue(_webRTCConnection);
+    }
+
+    // Legge il dizionario privato videoTrackSenders dal WebRTCManager via reflection.
+    System.Collections.Generic.Dictionary<string, RTCRtpSender> GetVideoSenders()
+    {
+        var manager = GetWebRTCManager();
         if (manager == null) return null;
 
         var sendersField = manager.GetType()
@@ -134,6 +175,19 @@ public class VideoManager : MonoBehaviour
     {
         if (_webRTCConnection != null)
             _webRTCConnection.WebRTCConnected.RemoveListener(OnWebRTCConnected);
+
+        // Rimuove il track dai peer e libera le risorse native prima di distruggere la RT.
+        if (_videoStreamTrack != null)
+        {
+            var manager = GetWebRTCManager();
+            manager?.GetType()
+                .GetMethod("RemoveVideoTrack", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                ?.Invoke(manager, null);
+            _videoStreamTrack.Dispose();
+            _videoStreamTrack = null;
+        }
+        videoActive = false;
+
         currentSource?.stop();
         if (camRenderTexture != null)
         {
