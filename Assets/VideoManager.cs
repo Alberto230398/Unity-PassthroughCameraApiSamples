@@ -40,8 +40,8 @@ public class VideoManager : MonoBehaviour
 
     void Update()
     {
-        if (OVRInput.GetDown(OVRInput.Button.Two) && currentSource != null)
-            SwitchSource((activeSourceIndex + 1) % sources.Length);
+        //if (OVRInput.GetDown(OVRInput.Button.Two) && currentSource != null)
+            //SwitchSource((activeSourceIndex + 1) % sources.Length);
 
         if (OVRInput.GetDown(OVRInput.Button.One))
         {
