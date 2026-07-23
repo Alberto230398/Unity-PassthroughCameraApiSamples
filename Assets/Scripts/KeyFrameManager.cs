@@ -123,7 +123,7 @@ public class KeyFrameManager : MonoBehaviour
                 // _keyframeCount = numero di keyframe catturati/salvati = quelli che verranno inviati.
                 if (debugText != null)
                     debugText.text = $"Scan disattivata, kf inviati: {_keyframeCount}";
-                RetrieveAndSendData();
+                //RetrieveAndSendData();
             }
         }
     }
@@ -506,9 +506,13 @@ public class KeyFrameManager : MonoBehaviour
         byte[] rawDepthBytes = kf.rawDepth.EncodeToEXR();
         System.IO.File.WriteAllBytes($"{dir}/rawDepth.exr", rawDepthBytes);
 
-        // Depth allineata, registrata, risoluzione frame RGB, float EXR.
-        byte[] alignedDepthBytes = kf.alignedDepth.EncodeToEXR(Texture2D.EXRFlags.CompressZIP);
+        // Depth allineata, registrata, risoluzione frame RGB, EXR float32 + ZIP:
+        // completamente LOSSLESS (mantiene i 32 bit pieni, ZIP comprime senza perdita).
+        // ~4-6 MB invece di ~12 MB del float32 non compresso, senza perdere precisione.
+        byte[] alignedDepthBytes = kf.alignedDepth.EncodeToEXR(
+            Texture2D.EXRFlags.OutputAsFloat | Texture2D.EXRFlags.CompressZIP);
         System.IO.File.WriteAllBytes($"{dir}/alignedDepth.exr", alignedDepthBytes);
+
 
         // === Coppia a risoluzione DEPTH ===
         // RGB (sinistro/destro) ricampionato a risoluzione depth, PNG.
@@ -609,6 +613,9 @@ public class KeyFrameManager : MonoBehaviour
 
         float CamDistance = Vector3.Distance(LeftPose.position, rightCamPose.position);
 
+        // ---------------INVIO FRAME BY FRAME---------------- 
+        HttpManager.httpMng.SetRGBTexture(rgbBytes, alignedDepthBytes, pose, RGBIntrinsics, reproj, zbuf, depthMeta);
+
         System.IO.File.WriteAllText($"{dir}/LeftCamPose.json", pose);
         System.IO.File.WriteAllText($"{dir}/RightCamPose.json", rightPose);
         System.IO.File.WriteAllText($"{dir}/LeftIntrinsics.json", RGBIntrinsics);
@@ -639,7 +646,7 @@ public class KeyFrameManager : MonoBehaviour
         }
 
         Debug.Log($"[SEND] Passo la cartella a HttpManager: {keyframesDir}");
-        HttpManager.httpMng.SendKeyframesFolderAsync(keyframesDir);
+        //HttpManager.httpMng.SendKeyframesFolder(keyframesDir);
     }
 
     // Legge un render target RGBA in una Texture2D CPU-side per encoding/salvataggio.
