@@ -139,7 +139,11 @@ function connect() {
           closePeerConnection();
           await createPeerConnection(sender);
           ws.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|False`);
-          await sendOffer(sender);
+          // NIENTE offerta dal browser: fa SOLO da answerer. Il Quest crea la sua offerta da
+          // solo (OnNegotiationNeeded sul data channel + VideoManager che aggancia il video).
+          // Se offrissero entrambi in contemporanea → glare: SetLocalDescription sul Quest
+          // fallisce e il pacchetto lancia "LocalDescription is not exist", che pianta la
+          // coroutine WebRTC.Update() → app bloccata. Un solo offerente = niente gara.
         } else {
           console.warn(`[WS] NEWPEER da "${sender}" ignorato: non combacia con questId "${questId}"`);
         }
@@ -147,8 +151,8 @@ function connect() {
       }
       case 'NEWPEERACK': {
         if (sender === questId && !pc) {
+          // Anche qui il browser fa solo da answerer: crea la pc e aspetta l'OFFER del Quest.
           await createPeerConnection(sender);
-          await sendOffer(sender);
         } else if (sender !== questId) {
           console.warn(`[WS] NEWPEERACK da "${sender}" ignorato: non combacia con questId "${questId}"`);
         }
@@ -182,7 +186,8 @@ function connect() {
         // e manda NEWPEER partiamo da zero invece di riutilizzare una pc morta.
         if (sender === questId) {
           closePeerConnection();
-          showOverlay();
+          // Il WS col server è ancora vivo: non è "NO SIGNAL", è solo il Quest che manca.
+          setOverlay('WAITING FOR VIDEO STREAM', true);
         }
         break;
       }
@@ -232,7 +237,8 @@ async function createPeerConnection(remotePeerId) {
     // Questo copre il caso in cui il Quest va in background ma il WS rimane aperto (TCP keepalive).
     if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
       document.getElementById('video').srcObject = null;
-      showOverlay();
+      // Il WS col server è ancora vivo: non è "NO SIGNAL", è solo il Quest che manca.
+      setOverlay('WAITING FOR VIDEO STREAM', true);
     }
   };
 
@@ -243,12 +249,6 @@ async function createPeerConnection(remotePeerId) {
       hideOverlay();
     }
   };
-}
-
-async function sendOffer(remotePeerId) {
-  const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
-  await pc.setLocalDescription(offer);
-  ws.send(`OFFER|${PEER_ID}|${remotePeerId}|${JSON.stringify(offer)}|0|False`);
 }
 
 async function handleOffer(remotePeerId, payload) {

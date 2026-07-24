@@ -1,0 +1,423 @@
+=== log avviato 2026-07-24 15:41:10 ===
+[15:41:11.073] [Log] [OVRManager] OnApplicationPause(true)
+[15:41:11.083] [Log] [OVRManager] OnApplicationFocus(true)
+[15:41:11.199] [Log] [OVRManager] OnApplicationPause(false)
+[15:41:11.230] [Log] ✅ Controllo l'oggetto: Weidmuller_Tentativo3_OK
+[15:41:11.230] [Log] 🔧 Trovati 0 Rigidbody:
+[15:41:11.231] [Log] ✅ Centro visivo calcolato: (-1.07, 0.91, 5.91)
+[15:41:11.246] [Log] [MetaXRFeature] OnAppSpaceChange: 106
+[15:41:11.248] [Log] [OVRManager] HMDAcquired event
+[15:41:11.250] [Log] [OVRManager] VrFocusAcquired event
+[15:41:11.250] [Log] [OVRManager] InputFocusLost event
+[15:41:11.276] [Log] Unable to process a controller whose SampleRateHz is 0 now.
+[15:41:11.276] [Log] Unable to process a controller whose SampleRateHz is 0 now.
+[15:41:11.279] [Log] [MetaXRFeature] OnAppSpaceChange: 107
+[15:41:11.284] [Log] [MetaXRFeature] OnAppSpaceChange: 108
+[15:41:11.285] [Log] [MetaXRFeature] OnAppSpaceChange: 109
+[15:41:11.285] [Log] [MetaXRFeature] OnAppSpaceChange: 110
+[15:41:11.287] [Log] [MetaXRFeature] OnSessionStateChange: 0 -> 1
+[15:41:11.288] [Log] [MetaXRFeature] OnSessionStateChange: 1 -> 2
+[15:41:11.509] [Log] [MetaXRFeature] OnSessionBegin: 81
+[15:41:11.622] [Warning] Multiple MainCamera found. Assume the real MainCamera is the camera with the least depth
+[15:41:11.712] [Log] [OVRManager] HMDMounted event
+[15:41:11.713] [Log] Recenter event detected
+[15:41:11.727] [Error] Error! Unable to connect to the remote server
+[15:41:11.728] [Log] WebSocket connection closed!
+[15:41:11.729] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.39, -0.16, 4.49)   (delta dalla fisica: 15,9 cm, 11,14°)
+DOPO   : (-0.42, -0.02, 4.55)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.42, -0.02, 4.55)
+[15:41:11.755] [Warning] FoveatedRenderingInfo struct size mismatch.
+[15:41:11.773] [Log] [MetaXRFeature] OnSessionStateChange: 2 -> 3
+[15:41:11.779] [Log] [MetaXRFeature] OnSessionStateChange: 3 -> 4
+[15:41:11.779] [Log] [MetaXRFeature] OnSessionStateChange: 4 -> 5
+[15:41:11.790] [Log] [OVRManager] InputFocusAcquired event
+[15:41:11.801] [Error] Error! Unable to connect to the remote server
+[15:41:11.801] [Log] WebSocket connection closed!
+[15:41:11.821] [Error] Error! Unable to connect to the remote server
+[15:41:11.821] [Log] WebSocket connection closed!
+[15:41:11.844] [Error] Error! Unable to connect to the remote server
+[15:41:11.845] [Log] WebSocket connection closed!
+[15:41:11.871] [Error] Error! Unable to connect to the remote server
+[15:41:11.871] [Log] WebSocket connection closed!
+[15:41:12.052] [Error] Error! Unable to connect to the remote server
+[15:41:12.052] [Log] WebSocket connection closed!
+[15:41:12.081] [Error] Error! Unable to connect to the remote server
+[15:41:12.082] [Log] WebSocket connection closed!
+[15:41:12.108] [Error] Error! Unable to connect to the remote server
+[15:41:12.109] [Log] WebSocket connection closed!
+[15:41:12.141] [Error] Error! Unable to connect to the remote server
+[15:41:12.141] [Log] WebSocket connection closed!
+[15:41:12.295] [Error] Error! Unable to connect to the remote server
+[15:41:12.296] [Log] WebSocket connection closed!
+[15:41:12.330] [Error] Error! Unable to connect to the remote server
+[15:41:12.330] [Log] WebSocket connection closed!
+[15:41:12.358] [Error] Error! Unable to connect to the remote server
+[15:41:12.358] [Log] WebSocket connection closed!
+[15:41:12.385] [Error] Error! Unable to connect to the remote server
+[15:41:12.386] [Log] WebSocket connection closed!
+[15:41:12.439] [Log] [OVRManager] TrackingAcquired event
+[15:41:12.557] [Error] Error! Unable to connect to the remote server
+[15:41:12.557] [Log] WebSocket connection closed!
+[15:41:12.595] [Error] Error! Unable to connect to the remote server
+[15:41:12.595] [Log] WebSocket connection closed!
+[15:41:12.596] [Log] [MetaXRFeature] OnAppSpaceChange: 135
+[15:41:12.597] [Log] [MetaXRFeature] OnAppSpaceChange: 136
+[15:41:12.597] [Log] [MetaXRFeature] OnAppSpaceChange: 137
+[15:41:12.600] [Log] Recenter event detected
+[15:41:12.622] [Error] Error! Unable to connect to the remote server
+[15:41:12.622] [Log] WebSocket connection closed!
+[15:41:12.691] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.42, 1.27, 4.55)   (delta dalla fisica: 0,1 cm, 0,00°)
+DOPO   : (-0.42, 1.27, 4.55)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.42, 1.27, 4.55)
+[15:41:12.776] [Error] Error! Unable to connect to the remote server
+[15:41:12.777] [Log] WebSocket connection closed!
+[15:41:12.806] [Error] Error! Unable to connect to the remote server
+[15:41:12.806] [Log] WebSocket connection closed!
+[15:41:12.832] [Error] Error! Unable to connect to the remote server
+[15:41:12.832] [Log] WebSocket connection closed!
+[15:41:12.859] [Error] Error! Unable to connect to the remote server
+[15:41:12.859] [Log] WebSocket connection closed!
+[15:41:13.025] [Error] Error! Unable to connect to the remote server
+[15:41:13.026] [Log] WebSocket connection closed!
+[15:41:13.053] [Error] Error! Unable to connect to the remote server
+[15:41:13.053] [Log] WebSocket connection closed!
+[15:41:13.081] [Error] Error! Unable to connect to the remote server
+[15:41:13.081] [Log] WebSocket connection closed!
+[15:41:13.109] [Error] Error! Unable to connect to the remote server
+[15:41:13.110] [Log] WebSocket connection closed!
+[15:41:13.275] [Error] Error! Unable to connect to the remote server
+[15:41:13.275] [Log] WebSocket connection closed!
+[15:41:13.304] [Error] Error! Unable to connect to the remote server
+[15:41:13.304] [Log] WebSocket connection closed!
+[15:41:13.334] [Error] Error! Unable to connect to the remote server
+[15:41:13.335] [Log] WebSocket connection closed!
+[15:41:13.365] [Error] Error! Unable to connect to the remote server
+[15:41:13.365] [Log] WebSocket connection closed!
+[15:41:13.523] [Error] Error! Unable to connect to the remote server
+[15:41:13.524] [Log] WebSocket connection closed!
+[15:41:13.552] [Error] Error! Unable to connect to the remote server
+[15:41:13.552] [Log] WebSocket connection closed!
+[15:41:13.579] [Error] Error! Unable to connect to the remote server
+[15:41:13.579] [Log] WebSocket connection closed!
+[15:41:13.608] [Error] Error! Unable to connect to the remote server
+[15:41:13.609] [Log] WebSocket connection closed!
+[15:41:13.702] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.42, 1.26, 4.54)   (delta dalla fisica: 0,0 cm, 0,00°)
+DOPO   : (-0.42, 1.26, 4.54)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.42, 1.26, 4.54)
+[15:41:13.760] [Error] Error! Unable to connect to the remote server
+[15:41:13.761] [Log] WebSocket connection closed!
+[15:41:13.791] [Error] Error! Unable to connect to the remote server
+[15:41:13.791] [Log] WebSocket connection closed!
+[15:41:13.814] [Error] Error! Unable to connect to the remote server
+[15:41:13.814] [Log] WebSocket connection closed!
+[15:41:13.849] [Error] Error! Unable to connect to the remote server
+[15:41:13.849] [Log] WebSocket connection closed!
+[15:41:14.013] [Error] Error! Unable to connect to the remote server
+[15:41:14.014] [Log] WebSocket connection closed!
+[15:41:14.052] [Log] [MetaXRFeature] OnAppSpaceChange: 138
+[15:41:14.052] [Log] [MetaXRFeature] OnAppSpaceChange: 139
+[15:41:14.053] [Log] [MetaXRFeature] OnAppSpaceChange: 140
+[15:41:14.059] [Log] Recenter event detected
+[15:41:14.060] [Error] Error! Unable to connect to the remote server
+[15:41:14.061] [Log] WebSocket connection closed!
+[15:41:14.079] [Error] Error! Unable to connect to the remote server
+[15:41:14.080] [Log] WebSocket connection closed!
+[15:41:14.265] [Error] Error! Unable to connect to the remote server
+[15:41:14.265] [Log] WebSocket connection closed!
+[15:41:14.293] [Error] Error! Unable to connect to the remote server
+[15:41:14.294] [Log] WebSocket connection closed!
+[15:41:14.320] [Error] Error! Unable to connect to the remote server
+[15:41:14.320] [Log] WebSocket connection closed!
+[15:41:14.350] [Error] Error! Unable to connect to the remote server
+[15:41:14.351] [Log] WebSocket connection closed!
+[15:41:14.421] [Error] Error! Unable to connect to the remote server
+[15:41:14.422] [Log] WebSocket connection closed!
+[15:41:14.448] [Error] Error! Unable to connect to the remote server
+[15:41:14.449] [Log] WebSocket connection closed!
+[15:41:14.478] [Error] Error! Unable to connect to the remote server
+[15:41:14.479] [Log] WebSocket connection closed!
+[15:41:14.532] [Error] Error! Unable to connect to the remote server
+[15:41:14.533] [Log] WebSocket connection closed!
+[15:41:14.560] [Error] Error! Unable to connect to the remote server
+[15:41:14.561] [Log] WebSocket connection closed!
+[15:41:14.589] [Error] Error! Unable to connect to the remote server
+[15:41:14.589] [Log] WebSocket connection closed!
+[15:41:14.617] [Error] Error! Unable to connect to the remote server
+[15:41:14.617] [Log] WebSocket connection closed!
+[15:41:14.644] [Error] Error! Unable to connect to the remote server
+[15:41:14.644] [Log] WebSocket connection closed!
+[15:41:14.714] [Error] Error! Unable to connect to the remote server
+[15:41:14.714] [Log] WebSocket connection closed!
+[15:41:14.715] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.40, 1.02, 4.56)   (delta dalla fisica: 0,0 cm, 0,00°)
+DOPO   : (-0.40, 1.02, 4.56)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.40, 1.02, 4.56)
+[15:41:14.743] [Error] Error! Unable to connect to the remote server
+[15:41:14.743] [Log] WebSocket connection closed!
+[15:41:14.770] [Error] Error! Unable to connect to the remote server
+[15:41:14.770] [Log] WebSocket connection closed!
+[15:41:14.838] [Error] Error! Unable to connect to the remote server
+[15:41:14.839] [Log] WebSocket connection closed!
+[15:41:14.869] [Error] Error! Unable to connect to the remote server
+[15:41:14.869] [Log] WebSocket connection closed!
+[15:41:14.895] [Error] Error! Unable to connect to the remote server
+[15:41:14.896] [Log] WebSocket connection closed!
+[15:41:14.922] [Error] Error! Unable to connect to the remote server
+[15:41:14.922] [Log] WebSocket connection closed!
+[15:41:14.951] [Error] Error! Unable to connect to the remote server
+[15:41:14.952] [Log] WebSocket connection closed!
+[15:41:15.020] [Error] Error! Unable to connect to the remote server
+[15:41:15.020] [Log] WebSocket connection closed!
+[15:41:15.048] [Error] Error! Unable to connect to the remote server
+[15:41:15.049] [Log] WebSocket connection closed!
+[15:41:15.075] [Error] Error! Unable to connect to the remote server
+[15:41:15.075] [Log] WebSocket connection closed!
+[15:41:15.145] [Error] Error! Unable to connect to the remote server
+[15:41:15.146] [Log] WebSocket connection closed!
+[15:41:15.227] [Error] Error! Unable to connect to the remote server
+[15:41:15.228] [Log] WebSocket connection closed!
+[15:41:15.262] [Error] Error! Unable to connect to the remote server
+[15:41:15.262] [Log] WebSocket connection closed!
+[15:41:15.284] [Error] Error! Unable to connect to the remote server
+[15:41:15.285] [Log] WebSocket connection closed!
+[15:41:15.353] [Error] Error! Unable to connect to the remote server
+[15:41:15.353] [Log] WebSocket connection closed!
+[15:41:15.435] [Error] Error! Unable to connect to the remote server
+[15:41:15.436] [Log] WebSocket connection closed!
+[15:41:15.466] [Error] Error! Unable to connect to the remote server
+[15:41:15.466] [Log] WebSocket connection closed!
+[15:41:15.532] [Error] Error! Unable to connect to the remote server
+[15:41:15.533] [Log] WebSocket connection closed!
+[15:41:15.574] [Error] Error! Unable to connect to the remote server
+[15:41:15.575] [Log] WebSocket connection closed!
+[15:41:15.600] [Error] Error! Unable to connect to the remote server
+[15:41:15.600] [Log] WebSocket connection closed!
+[15:41:15.671] [Error] Error! Unable to connect to the remote server
+[15:41:15.672] [Log] WebSocket connection closed!
+[15:41:15.699] [Error] Error! Unable to connect to the remote server
+[15:41:15.699] [Log] WebSocket connection closed!
+[15:41:15.726] [Error] Error! Unable to connect to the remote server
+[15:41:15.727] [Log] WebSocket connection closed!
+[15:41:15.727] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.48, 1.09, 4.53)   (delta dalla fisica: 0,1 cm, 0,20°)
+DOPO   : (-0.48, 1.09, 4.53)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.48, 1.09, 4.53)
+[15:41:15.754] [Error] Error! Unable to connect to the remote server
+[15:41:15.754] [Log] WebSocket connection closed!
+[15:41:15.782] [Error] Error! Unable to connect to the remote server
+[15:41:15.783] [Log] WebSocket connection closed!
+[15:41:15.851] [Error] Error! Unable to connect to the remote server
+[15:41:15.851] [Log] WebSocket connection closed!
+[15:41:15.893] [Error] Error! Unable to connect to the remote server
+[15:41:15.894] [Log] WebSocket connection closed!
+[15:41:15.977] [Error] Error! Unable to connect to the remote server
+[15:41:15.977] [Log] WebSocket connection closed!
+[15:41:16.046] [Error] Error! Unable to connect to the remote server
+[15:41:16.046] [Log] WebSocket connection closed!
+[15:41:16.073] [Error] Error! Unable to connect to the remote server
+[15:41:16.073] [Log] WebSocket connection closed!
+[15:41:16.102] [Error] Error! Unable to connect to the remote server
+[15:41:16.103] [Log] WebSocket connection closed!
+[15:41:16.130] [Error] Error! Unable to connect to the remote server
+[15:41:16.130] [Log] WebSocket connection closed!
+[15:41:16.157] [Error] Error! Unable to connect to the remote server
+[15:41:16.157] [Log] WebSocket connection closed!
+[15:41:16.185] [Error] Error! Unable to connect to the remote server
+[15:41:16.186] [Log] WebSocket connection closed!
+[15:41:16.256] [Error] Error! Unable to connect to the remote server
+[15:41:16.256] [Log] WebSocket connection closed!
+[15:41:16.297] [Error] Error! Unable to connect to the remote server
+[15:41:16.297] [Log] WebSocket connection closed!
+[15:41:16.325] [Error] Error! Unable to connect to the remote server
+[15:41:16.325] [Log] WebSocket connection closed!
+[15:41:16.381] [Error] Error! Unable to connect to the remote server
+[15:41:16.382] [Log] WebSocket connection closed!
+[15:41:16.409] [Error] Error! Unable to connect to the remote server
+[15:41:16.410] [Log] WebSocket connection closed!
+[15:41:16.435] [Error] Error! Unable to connect to the remote server
+[15:41:16.436] [Log] WebSocket connection closed!
+[15:41:16.463] [Error] Error! Unable to connect to the remote server
+[15:41:16.463] [Log] WebSocket connection closed!
+[15:41:16.547] [Error] Error! Unable to connect to the remote server
+[15:41:16.547] [Log] WebSocket connection closed!
+[15:41:16.575] [Error] Error! Unable to connect to the remote server
+[15:41:16.576] [Log] WebSocket connection closed!
+[15:41:16.603] [Error] Error! Unable to connect to the remote server
+[15:41:16.603] [Log] WebSocket connection closed!
+[15:41:16.673] [Error] Error! Unable to connect to the remote server
+[15:41:16.674] [Log] WebSocket connection closed!
+[15:41:16.702] [Error] Error! Unable to connect to the remote server
+[15:41:16.702] [Log] WebSocket connection closed!
+[15:41:16.728] [Error] Error! Unable to connect to the remote server
+[15:41:16.729] [Log] WebSocket connection closed!
+[15:41:16.729] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.44, 1.09, 4.54)   (delta dalla fisica: 0,0 cm, 0,00°)
+DOPO   : (-0.44, 1.09, 4.54)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.44, 1.09, 4.54)
+[15:41:16.812] [Error] Error! Unable to connect to the remote server
+[15:41:16.812] [Log] WebSocket connection closed!
+[15:41:16.840] [Error] Error! Unable to connect to the remote server
+[15:41:16.841] [Log] WebSocket connection closed!
+[15:41:16.867] [Error] Error! Unable to connect to the remote server
+[15:41:16.868] [Log] WebSocket connection closed!
+[15:41:16.950] [Error] Error! Unable to connect to the remote server
+[15:41:16.951] [Log] WebSocket connection closed!
+[15:41:16.979] [Error] Error! Unable to connect to the remote server
+[15:41:16.979] [Log] WebSocket connection closed!
+[15:41:17.007] [Error] Error! Unable to connect to the remote server
+[15:41:17.008] [Log] WebSocket connection closed!
+[15:41:17.091] [Error] Error! Unable to connect to the remote server
+[15:41:17.091] [Log] WebSocket connection closed!
+[15:41:17.117] [Error] Error! Unable to connect to the remote server
+[15:41:17.118] [Log] WebSocket connection closed!
+[15:41:17.146] [Error] Error! Unable to connect to the remote server
+[15:41:17.146] [Log] WebSocket connection closed!
+[15:41:17.229] [Error] Error! Unable to connect to the remote server
+[15:41:17.230] [Log] WebSocket connection closed!
+[15:41:17.256] [Error] Error! Unable to connect to the remote server
+[15:41:17.257] [Log] WebSocket connection closed!
+[15:41:17.284] [Error] Error! Unable to connect to the remote server
+[15:41:17.285] [Log] WebSocket connection closed!
+[15:41:17.368] [Error] Error! Unable to connect to the remote server
+[15:41:17.368] [Log] WebSocket connection closed!
+[15:41:17.396] [Error] Error! Unable to connect to the remote server
+[15:41:17.397] [Log] WebSocket connection closed!
+[15:41:17.424] [Error] Error! Unable to connect to the remote server
+[15:41:17.424] [Log] WebSocket connection closed!
+[15:41:17.493] [Error] Error! Unable to connect to the remote server
+[15:41:17.494] [Log] WebSocket connection closed!
+[15:41:17.521] [Error] Error! Unable to connect to the remote server
+[15:41:17.522] [Log] WebSocket connection closed!
+[15:41:17.549] [Error] Error! Unable to connect to the remote server
+[15:41:17.549] [Log] WebSocket connection closed!
+[15:41:17.632] [Error] Error! Unable to connect to the remote server
+[15:41:17.632] [Log] WebSocket connection closed!
+[15:41:17.661] [Error] Error! Unable to connect to the remote server
+[15:41:17.661] [Log] WebSocket connection closed!
+[15:41:17.689] [Error] Error! Unable to connect to the remote server
+[15:41:17.689] [Log] WebSocket connection closed!
+[15:41:17.731] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.46, 1.05, 4.54)   (delta dalla fisica: 0,0 cm, 0,00°)
+DOPO   : (-0.46, 1.05, 4.54)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.46, 1.05, 4.54)
+[15:41:17.770] [Error] Error! Unable to connect to the remote server
+[15:41:17.771] [Log] WebSocket connection closed!
+[15:41:17.798] [Error] Error! Unable to connect to the remote server
+[15:41:17.799] [Log] WebSocket connection closed!
+[15:41:17.827] [Error] Error! Unable to connect to the remote server
+[15:41:17.827] [Log] WebSocket connection closed!
+[15:41:17.909] [Error] Error! Unable to connect to the remote server
+[15:41:17.910] [Log] WebSocket connection closed!
+[15:41:17.939] [Error] Error! Unable to connect to the remote server
+[15:41:17.940] [Log] WebSocket connection closed!
+[15:41:17.966] [Error] Error! Unable to connect to the remote server
+[15:41:17.967] [Log] WebSocket connection closed!
+[15:41:18.036] [Error] Error! Unable to connect to the remote server
+[15:41:18.036] [Log] WebSocket connection closed!
+[15:41:18.063] [Error] Error! Unable to connect to the remote server
+[15:41:18.063] [Log] WebSocket connection closed!
+[15:41:18.092] [Error] Error! Unable to connect to the remote server
+[15:41:18.093] [Log] WebSocket connection closed!
+[15:41:18.174] [Error] Error! Unable to connect to the remote server
+[15:41:18.174] [Log] WebSocket connection closed!
+[15:41:18.204] [Error] Error! Unable to connect to the remote server
+[15:41:18.204] [Log] WebSocket connection closed!
+[15:41:18.256] [Log] WebSocket connection opened!
+[15:41:18.731] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.47, 1.05, 4.54)   (delta dalla fisica: 0,0 cm, 0,00°)
+DOPO   : (-0.47, 1.05, 4.54)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.47, 1.05, 4.54)
+[15:41:19.732] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.47, 1.05, 4.54)   (delta dalla fisica: 0,0 cm, 0,00°)
+DOPO   : (-0.47, 1.05, 4.54)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.47, 1.05, 4.54)
+[15:41:20.344] [Log] Received WebSocket message: NEWPEER|Browser-PeerId|ALL|New peer Browser-PeerId|0|False
+[15:41:20.381] [Log] SenderDataChannel for Browser-PeerId created on Quest-PeerId.
+[15:41:20.381] [Log] ReceiverDataChannel for Browser-PeerId created on Quest-PeerId.
+[15:41:20.381] [Log] NEWPEER: Created new peerconnection Browser-PeerId on peer Quest-PeerId
+[15:41:20.399] [Log] Received WebSocket message: NEWPEERACK|Browser-PeerId|Quest-PeerId|ack|0|False
+[15:41:20.399] [Log] Received WebSocket message: OFFER|Browser-PeerId|Quest-PeerId|{"sdp":"v=0\r\no=- 8393807889939421505 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:actpass\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:63 red/48000/2\r\na=fmtp:63 111/111\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 35 36 37 38 103 104 107 108 109 114 115 116 117 118 39 40 41 42 43 44 45 46 47 48 119 120 121 122 49 50 51 52 123 124 125 53\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:actpass\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:98 VP9/90000\r\na=rtcp-fb:98 goog-remb\r\na=rtcp-fb:98 transport-cc\r\na=rtcp-fb:98 ccm fir\r\na=rtcp-fb:98 nack\r\na=rtcp-fb:98 nack pli\r\na=fmtp:98 profile-id=0\r\na=rtpmap:99 rtx/90000\r\na=fmtp:99 apt=98\r\na=rtpmap:100 VP9/90000\r\na=rtcp-fb:100 goog-remb\r\na=rtcp-fb:100 transport-cc\r\na=rtcp-fb:100 ccm fir\r\na=rtcp-fb:100 nack\r\na=rtcp-fb:100 nack pli\r\na=fmtp:100 profile-id=2\r\na=rtpmap:101 rtx/90000\r\na=fmtp:101 apt=100\r\na=rtpmap:35 VP9/90000\r\na=rtcp-fb:35 goog-remb\r\na=rtcp-fb:35 transport-cc\r\na=rtcp-fb:35 ccm fir\r\na=rtcp-fb:35 nack\r\na=rtcp-fb:35 nack pli\r\na=fmtp:35 profile-id=1\r\na=rtpmap:36 rtx/90000\r\na=fmtp:36 apt=35\r\na=rtpmap:37 VP9/90000\r\na=rtcp-fb:37 goog-remb\r\na=rtcp-fb:37 transport-cc\r\na=rtcp-fb:37 ccm fir\r\na=rtcp-fb:37 nack\r\na=rtcp-fb:37 nack pli\r\na=fmtp:37 profile-id=3\r\na=rtpmap:38 rtx/90000\r\na=fmtp:38 apt=37\r\na=rtpmap:103 H264/90000\r\na=rtcp-fb:103 goog-remb\r\na=rtcp-fb:103 transport-cc\r\na=rtcp-fb:103 ccm fir\r\na=rtcp-fb:103 nack\r\na=rtcp-fb:103 nack pli\r\na=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\na=rtpmap:104 rtx/90000\r\na=fmtp:104 apt=103\r\na=rtpmap:107 H264/90000\r\na=rtcp-fb:107 goog-remb\r\na=rtcp-fb:107 transport-cc\r\na=rtcp-fb:107 ccm fir\r\na=rtcp-fb:107 nack\r\na=rtcp-fb:107 nack pli\r\na=fmtp:107 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42001f\r\na=rtpmap:108 rtx/90000\r\na=fmtp:108 apt=107\r\na=rtpmap:109 H264/90000\r\na=rtcp-fb:109 goog-remb\r\na=rtcp-fb:109 transport-cc\r\na=rtcp-fb:109 ccm fir\r\na=rtcp-fb:109 nack\r\na=rtcp-fb:109 nack pli\r\na=fmtp:109 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:114 rtx/90000\r\na=fmtp:114 apt=109\r\na=rtpmap:115 H264/90000\r\na=rtcp-fb:115 goog-remb\r\na=rtcp-fb:115 transport-cc\r\na=rtcp-fb:115 ccm fir\r\na=rtcp-fb:115 nack\r\na=rtcp-fb:115 nack pli\r\na=fmtp:115 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42e01f\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=115\r\na=rtpmap:117 H264/90000\r\na=rtcp-fb:117 goog-remb\r\na=rtcp-fb:117 transport-cc\r\na=rtcp-fb:117 ccm fir\r\na=rtcp-fb:117 nack\r\na=rtcp-fb:117 nack pli\r\na=fmtp:117 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=4d001f\r\na=rtpmap:118 rtx/90000\r\na=fmtp:118 apt=117\r\na=rtpmap:39 H264/90000\r\na=rtcp-fb:39 goog-remb\r\na=rtcp-fb:39 transport-cc\r\na=rtcp-fb:39 ccm fir\r\na=rtcp-fb:39 nack\r\na=rtcp-fb:39 nack pli\r\na=fmtp:39 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=4d001f\r\na=rtpmap:40 rtx/90000\r\na=fmtp:40 apt=39\r\na=rtpmap:41 H264/90000\r\na=rtcp-fb:41 goog-remb\r\na=rtcp-fb:41 transport-cc\r\na=rtcp-fb:41 ccm fir\r\na=rtcp-fb:41 nack\r\na=rtcp-fb:41 nack pli\r\na=fmtp:41 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=f4001f\r\na=rtpmap:42 rtx/90000\r\na=fmtp:42 apt=41\r\na=rtpmap:43 H264/90000\r\na=rtcp-fb:43 goog-remb\r\na=rtcp-fb:43 transport-cc\r\na=rtcp-fb:43 ccm fir\r\na=rtcp-fb:43 nack\r\na=rtcp-fb:43 nack pli\r\na=fmtp:43 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=f4001f\r\na=rtpmap:44 rtx/90000\r\na=fmtp:44 apt=43\r\na=rtpmap:45 AV1/90000\r\na=rtcp-fb:45 goog-remb\r\na=rtcp-fb:45 transport-cc\r\na=rtcp-fb:45 ccm fir\r\na=rtcp-fb:45 nack\r\na=rtcp-fb:45 nack pli\r\na=fmtp:45 level-idx=5;profile=0;tier=0\r\na=rtpmap:46 rtx/90000\r\na=fmtp:46 apt=45\r\na=rtpmap:47 AV1/90000\r\na=rtcp-fb:47 goog-remb\r\na=rtcp-fb:47 transport-cc\r\na=rtcp-fb:47 ccm fir\r\na=rtcp-fb:47 nack\r\na=rtcp-fb:47 nack pli\r\na=fmtp:47 level-idx=5;profile=1;tier=0\r\na=rtpmap:48 rtx/90000\r\na=fmtp:48 apt=47\r\na=rtpmap:119 H264/90000\r\na=rtcp-fb:119 goog-remb\r\na=rtcp-fb:119 transport-cc\r\na=rtcp-fb:119 ccm fir\r\na=rtcp-fb:119 nack\r\na=rtcp-fb:119 nack pli\r\na=fmtp:119 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=64001f\r\na=rtpmap:120 rtx/90000\r\na=fmtp:120 apt=119\r\na=rtpmap:121 H264/90000\r\na=rtcp-fb:121 goog-remb\r\na=rtcp-fb:121 transport-cc\r\na=rtcp-fb:121 ccm fir\r\na=rtcp-fb:121 nack\r\na=rtcp-fb:121 nack pli\r\na=fmtp:121 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=64001f\r\na=rtpmap:122 rtx/90000\r\na=fmtp:122 apt=121\r\na=rtpmap:49 H265/90000\r\na=rtcp-fb:49 goog-remb\r\na=rtcp-fb:49 transport-cc\r\na=rtcp-fb:49 ccm fir\r\na=rtcp-fb:49 nack\r\na=rtcp-fb:49 nack pli\r\na=fmtp:49 level-id=180;profile-id=1;tier-flag=0;tx-mode=SRST\r\na=rtpmap:50 rtx/90000\r\na=fmtp:50 apt=49\r\na=rtpmap:51 H265/90000\r\na=rtcp-fb:51 goog-remb\r\na=rtcp-fb:51 transport-cc\r\na=rtcp-fb:51 ccm fir\r\na=rtcp-fb:51 nack\r\na=rtcp-fb:51 nack pli\r\na=fmtp:51 level-id=180;profile-id=2;tier-flag=0;tx-mode=SRST\r\na=rtpmap:52 rtx/90000\r\na=fmtp:52 apt=51\r\na=rtpmap:123 red/90000\r\na=rtpmap:124 rtx/90000\r\na=fmtp:124 apt=123\r\na=rtpmap:125 ulpfec/90000\r\na=rtpmap:53 flexfec-03/90000\r\na=rtcp-fb:53 goog-remb\r\na=rtcp-fb:53 transport-cc\r\na=fmtp:53 repair-window=10000000\r\n","type":"offer"}|0|False
+[15:41:20.403] [Log] Quest-PeerId got OFFER from Browser-PeerId : {"sdp":"v=0\r\no=- 8393807889939421505 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:actpass\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:63 red/48000/2\r\na=fmtp:63 111/111\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 35 36 37 38 103 104 107 108 109 114 115 116 117 118 39 40 41 42 43 44 45 46 47 48 119 120 121 122 49 50 51 52 123 124 125 53\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:actpass\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:98 VP9/90000\r\na=rtcp-fb:98 goog-remb\r\na=rtcp-fb:98 transport-cc\r\na=rtcp-fb:98 ccm fir\r\na=rtcp-fb:98 nack\r\na=rtcp-fb:98 nack pli\r\na=fmtp:98 profile-id=0\r\na=rtpmap:99 rtx/90000\r\na=fmtp:99 apt=98\r\na=rtpmap:100 VP9/90000\r\na=rtcp-fb:100 goog-remb\r\na=rtcp-fb:100 transport-cc\r\na=rtcp-fb:100 ccm fir\r\na=rtcp-fb:100 nack\r\na=rtcp-fb:100 nack pli\r\na=fmtp:100 profile-id=2\r\na=rtpmap:101 rtx/90000\r\na=fmtp:101 apt=100\r\na=rtpmap:35 VP9/90000\r\na=rtcp-fb:35 goog-remb\r\na=rtcp-fb:35 transport-cc\r\na=rtcp-fb:35 ccm fir\r\na=rtcp-fb:35 nack\r\na=rtcp-fb:35 nack pli\r\na=fmtp:35 profile-id=1\r\na=rtpmap:36 rtx/90000\r\na=fmtp:36 apt=35\r\na=rtpmap:37 VP9/90000\r\na=rtcp-fb:37 goog-remb\r\na=rtcp-fb:37 transport-cc\r\na=rtcp-fb:37 ccm fir\r\na=rtcp-fb:37 nack\r\na=rtcp-fb:37 nack pli\r\na=fmtp:37 profile-id=3\r\na=rtpmap:38 rtx/90000\r\na=fmtp:38 apt=37\r\na=rtpmap:103 H264/90000\r\na=rtcp-fb:103 goog-remb\r\na=rtcp-fb:103 transport-cc\r\na=rtcp-fb:103 ccm fir\r\na=rtcp-fb:103 nack\r\na=rtcp-fb:103 nack pli\r\na=fmtp:103 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f\r\na=rtpmap:104 rtx/90000\r\na=fmtp:104 apt=103\r\na=rtpmap:107 H264/90000\r\na=rtcp-fb:107 goog-remb\r\na=rtcp-fb:107 transport-cc\r\na=rtcp-fb:107 ccm fir\r\na=rtcp-fb:107 nack\r\na=rtcp-fb:107 nack pli\r\na=fmtp:107 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42001f\r\na=rtpmap:108 rtx/90000\r\na=fmtp:108 apt=107\r\na=rtpmap:109 H264/90000\r\na=rtcp-fb:109 goog-remb\r\na=rtcp-fb:109 transport-cc\r\na=rtcp-fb:109 ccm fir\r\na=rtcp-fb:109 nack\r\na=rtcp-fb:109 nack pli\r\na=fmtp:109 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:114 rtx/90000\r\na=fmtp:114 apt=109\r\na=rtpmap:115 H264/90000\r\na=rtcp-fb:115 goog-remb\r\na=rtcp-fb:115 transport-cc\r\na=rtcp-fb:115 ccm fir\r\na=rtcp-fb:115 nack\r\na=rtcp-fb:115 nack pli\r\na=fmtp:115 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=42e01f\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=115\r\na=rtpmap:117 H264/90000\r\na=rtcp-fb:117 goog-remb\r\na=rtcp-fb:117 transport-cc\r\na=rtcp-fb:117 ccm fir\r\na=rtcp-fb:117 nack\r\na=rtcp-fb:117 nack pli\r\na=fmtp:117 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=4d001f\r\na=rtpmap:118 rtx/90000\r\na=fmtp:118 apt=117\r\na=rtpmap:39 H264/90000\r\na=rtcp-fb:39 goog-remb\r\na=rtcp-fb:39 transport-cc\r\na=rtcp-fb:39 ccm fir\r\na=rtcp-fb:39 nack\r\na=rtcp-fb:39 nack pli\r\na=fmtp:39 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=4d001f\r\na=rtpmap:40 rtx/90000\r\na=fmtp:40 apt=39\r\na=rtpmap:41 H264/90000\r\na=rtcp-fb:41 goog-remb\r\na=rtcp-fb:41 transport-cc\r\na=rtcp-fb:41 ccm fir\r\na=rtcp-fb:41 nack\r\na=rtcp-fb:41 nack pli\r\na=fmtp:41 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=f4001f\r\na=rtpmap:42 rtx/90000\r\na=fmtp:42 apt=41\r\na=rtpmap:43 H264/90000\r\na=rtcp-fb:43 goog-remb\r\na=rtcp-fb:43 transport-cc\r\na=rtcp-fb:43 ccm fir\r\na=rtcp-fb:43 nack\r\na=rtcp-fb:43 nack pli\r\na=fmtp:43 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=f4001f\r\na=rtpmap:44 rtx/90000\r\na=fmtp:44 apt=43\r\na=rtpmap:45 AV1/90000\r\na=rtcp-fb:45 goog-remb\r\na=rtcp-fb:45 transport-cc\r\na=rtcp-fb:45 ccm fir\r\na=rtcp-fb:45 nack\r\na=rtcp-fb:45 nack pli\r\na=fmtp:45 level-idx=5;profile=0;tier=0\r\na=rtpmap:46 rtx/90000\r\na=fmtp:46 apt=45\r\na=rtpmap:47 AV1/90000\r\na=rtcp-fb:47 goog-remb\r\na=rtcp-fb:47 transport-cc\r\na=rtcp-fb:47 ccm fir\r\na=rtcp-fb:47 nack\r\na=rtcp-fb:47 nack pli\r\na=fmtp:47 level-idx=5;profile=1;tier=0\r\na=rtpmap:48 rtx/90000\r\na=fmtp:48 apt=47\r\na=rtpmap:119 H264/90000\r\na=rtcp-fb:119 goog-remb\r\na=rtcp-fb:119 transport-cc\r\na=rtcp-fb:119 ccm fir\r\na=rtcp-fb:119 nack\r\na=rtcp-fb:119 nack pli\r\na=fmtp:119 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=64001f\r\na=rtpmap:120 rtx/90000\r\na=fmtp:120 apt=119\r\na=rtpmap:121 H264/90000\r\na=rtcp-fb:121 goog-remb\r\na=rtcp-fb:121 transport-cc\r\na=rtcp-fb:121 ccm fir\r\na=rtcp-fb:121 nack\r\na=rtcp-fb:121 nack pli\r\na=fmtp:121 level-asymmetry-allowed=1;packetization-mode=0;profile-level-id=64001f\r\na=rtpmap:122 rtx/90000\r\na=fmtp:122 apt=121\r\na=rtpmap:49 H265/90000\r\na=rtcp-fb:49 goog-remb\r\na=rtcp-fb:49 transport-cc\r\na=rtcp-fb:49 ccm fir\r\na=rtcp-fb:49 nack\r\na=rtcp-fb:49 nack pli\r\na=fmtp:49 level-id=180;profile-id=1;tier-flag=0;tx-mode=SRST\r\na=rtpmap:50 rtx/90000\r\na=fmtp:50 apt=49\r\na=rtpmap:51 H265/90000\r\na=rtcp-fb:51 goog-remb\r\na=rtcp-fb:51 transport-cc\r\na=rtcp-fb:51 ccm fir\r\na=rtcp-fb:51 nack\r\na=rtcp-fb:51 nack pli\r\na=fmtp:51 level-id=180;profile-id=2;tier-flag=0;tx-mode=SRST\r\na=rtpmap:52 rtx/90000\r\na=fmtp:52 apt=51\r\na=rtpmap:123 red/90000\r\na=rtpmap:124 rtx/90000\r\na=fmtp:124 apt=123\r\na=rtpmap:125 ulpfec/90000\r\na=rtpmap:53 flexfec-03/90000\r\na=rtcp-fb:53 goog-remb\r\na=rtcp-fb:53 transport-cc\r\na=fmtp:53 repair-window=10000000\r\n","type":"offer"}
+[15:41:20.403] [Log] Received WebSocket message: CANDIDATE|Browser-PeerId|Quest-PeerId|{"candidate":"candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 ufrag Wecp network-cost 999","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"Wecp"}|0|False
+[15:41:20.404] [Log] Quest-PeerId got CANDIDATE from Browser-PeerId : {"candidate":"candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 ufrag Wecp network-cost 999","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"Wecp"}
+[15:41:20.406] [Log] Received WebSocket message: CANDIDATE|Browser-PeerId|Quest-PeerId|{"candidate":"candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 ufrag Wecp network-cost 999","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"Wecp"}|0|False
+[15:41:20.407] [Log] Quest-PeerId got CANDIDATE from Browser-PeerId : {"candidate":"candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 ufrag Wecp network-cost 999","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"Wecp"}
+[15:41:20.429] [Log] Received WebSocket message: CANDIDATE|Browser-PeerId|Quest-PeerId|{"candidate":"candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 ufrag Wecp network-cost 999","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"Wecp"}|0|False
+[15:41:20.429] [Log] Quest-PeerId got CANDIDATE from Browser-PeerId : {"candidate":"candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 ufrag Wecp network-cost 999","sdpMid":"1","sdpMLineIndex":1,"usernameFragment":"Wecp"}
+[15:41:20.430] [Log] Received WebSocket message: CANDIDATE|Browser-PeerId|Quest-PeerId|{"candidate":"candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 ufrag Wecp network-cost 999","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"Wecp"}|0|False
+[15:41:20.430] [Log] Quest-PeerId got CANDIDATE from Browser-PeerId : {"candidate":"candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 ufrag Wecp network-cost 999","sdpMid":"0","sdpMLineIndex":0,"usernameFragment":"Wecp"}
+[15:41:20.480] [Exception] InvalidOperationException: LocalDescription is not exist
+[15:41:20.530] [Log] Quest-PeerId connection Browser-PeerId changed to Checking
+[15:41:20.652] [Log] Received WebSocket message: ANSWER|Browser-PeerId|Quest-PeerId|{"sdp":"v=0\r\no=- 8393807889939421505 3 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1 2\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 63981 UDP/TLS/RTP/SAVPF 9 0 8 13 127 125 110 126\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=inactive\r\na=rtcp-mux\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:127 opus/48000/2\r\na=rtcp-fb:127 transport-cc\r\na=fmtp:127 minptime=10;useinbandfec=1\r\na=rtpmap:125 red/48000/2\r\na=fmtp:125 127/127\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 54568 UDP/TLS/RTP/SAVPF 96 97 124 120 35 36 37 38 39 40 41 42 123 119 122 118 117 116 121 45\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=inactive\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:124 VP9/90000\r\na=rtcp-fb:124 goog-remb\r\na=rtcp-fb:124 transport-cc\r\na=rtcp-fb:124 ccm fir\r\na=rtcp-fb:124 nack\r\na=rtcp-fb:124 nack pli\r\na=fmtp:124 profile-id=0\r\na=rtpmap:120 rtx/90000\r\na=fmtp:120 apt=124\r\na=rtpmap:35 VP9/90000\r\na=rtcp-fb:35 goog-remb\r\na=rtcp-fb:35 transport-cc\r\na=rtcp-fb:35 ccm fir\r\na=rtcp-fb:35 nack\r\na=rtcp-fb:35 nack pli\r\na=fmtp:35 profile-id=1\r\na=rtpmap:36 rtx/90000\r\na=fmtp:36 apt=35\r\na=rtpmap:37 VP9/90000\r\na=rtcp-fb:37 goog-remb\r\na=rtcp-fb:37 transport-cc\r\na=rtcp-fb:37 ccm fir\r\na=rtcp-fb:37 nack\r\na=rtcp-fb:37 nack pli\r\na=fmtp:37 profile-id=3\r\na=rtpmap:38 rtx/90000\r\na=fmtp:38 apt=37\r\na=rtpmap:39 AV1/90000\r\na=rtcp-fb:39 goog-remb\r\na=rtcp-fb:39 transport-cc\r\na=rtcp-fb:39 ccm fir\r\na=rtcp-fb:39 nack\r\na=rtcp-fb:39 nack pli\r\na=fmtp:39 level-idx=5;profile=0;tier=0\r\na=rtpmap:40 rtx/90000\r\na=fmtp:40 apt=39\r\na=rtpmap:41 AV1/90000\r\na=rtcp-fb:41 goog-remb\r\na=rtcp-fb:41 transport-cc\r\na=rtcp-fb:41 ccm fir\r\na=rtcp-fb:41 nack\r\na=rtcp-fb:41 nack pli\r\na=fmtp:41 level-idx=5;profile=1;tier=0\r\na=rtpmap:42 rtx/90000\r\na=fmtp:42 apt=41\r\na=rtpmap:123 H264/90000\r\na=rtcp-fb:123 goog-remb\r\na=rtcp-fb:123 transport-cc\r\na=rtcp-fb:123 ccm fir\r\na=rtcp-fb:123 nack\r\na=rtcp-fb:123 nack pli\r\na=fmtp:123 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:119 rtx/90000\r\na=fmtp:119 apt=123\r\na=rtpmap:122 H265/90000\r\na=rtcp-fb:122 goog-remb\r\na=rtcp-fb:122 transport-cc\r\na=rtcp-fb:122 ccm fir\r\na=rtcp-fb:122 nack\r\na=rtcp-fb:122 nack pli\r\na=fmtp:122 level-id=93;profile-id=1;tier-flag=0;tx-mode=SRST\r\na=rtpmap:118 rtx/90000\r\na=fmtp:118 apt=122\r\na=rtpmap:117 red/90000\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=117\r\na=rtpmap:121 ulpfec/90000\r\na=rtpmap:45 flexfec-03/90000\r\na=rtcp-fb:45 goog-remb\r\na=rtcp-fb:45 transport-cc\r\na=fmtp:45 repair-window=10000000\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:2\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n","type":"answer"}|0|False
+[15:41:20.653] [Log] Quest-PeerId got ANSWER from Browser-PeerId : {"sdp":"v=0\r\no=- 8393807889939421505 3 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1 2\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 63981 UDP/TLS/RTP/SAVPF 9 0 8 13 127 125 110 126\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=inactive\r\na=rtcp-mux\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:127 opus/48000/2\r\na=rtcp-fb:127 transport-cc\r\na=fmtp:127 minptime=10;useinbandfec=1\r\na=rtpmap:125 red/48000/2\r\na=fmtp:125 127/127\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 54568 UDP/TLS/RTP/SAVPF 96 97 124 120 35 36 37 38 39 40 41 42 123 119 122 118 117 116 121 45\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=inactive\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:124 VP9/90000\r\na=rtcp-fb:124 goog-remb\r\na=rtcp-fb:124 transport-cc\r\na=rtcp-fb:124 ccm fir\r\na=rtcp-fb:124 nack\r\na=rtcp-fb:124 nack pli\r\na=fmtp:124 profile-id=0\r\na=rtpmap:120 rtx/90000\r\na=fmtp:120 apt=124\r\na=rtpmap:35 VP9/90000\r\na=rtcp-fb:35 goog-remb\r\na=rtcp-fb:35 transport-cc\r\na=rtcp-fb:35 ccm fir\r\na=rtcp-fb:35 nack\r\na=rtcp-fb:35 nack pli\r\na=fmtp:35 profile-id=1\r\na=rtpmap:36 rtx/90000\r\na=fmtp:36 apt=35\r\na=rtpmap:37 VP9/90000\r\na=rtcp-fb:37 goog-remb\r\na=rtcp-fb:37 transport-cc\r\na=rtcp-fb:37 ccm fir\r\na=rtcp-fb:37 nack\r\na=rtcp-fb:37 nack pli\r\na=fmtp:37 profile-id=3\r\na=rtpmap:38 rtx/90000\r\na=fmtp:38 apt=37\r\na=rtpmap:39 AV1/90000\r\na=rtcp-fb:39 goog-remb\r\na=rtcp-fb:39 transport-cc\r\na=rtcp-fb:39 ccm fir\r\na=rtcp-fb:39 nack\r\na=rtcp-fb:39 nack pli\r\na=fmtp:39 level-idx=5;profile=0;tier=0\r\na=rtpmap:40 rtx/90000\r\na=fmtp:40 apt=39\r\na=rtpmap:41 AV1/90000\r\na=rtcp-fb:41 goog-remb\r\na=rtcp-fb:41 transport-cc\r\na=rtcp-fb:41 ccm fir\r\na=rtcp-fb:41 nack\r\na=rtcp-fb:41 nack pli\r\na=fmtp:41 level-idx=5;profile=1;tier=0\r\na=rtpmap:42 rtx/90000\r\na=fmtp:42 apt=41\r\na=rtpmap:123 H264/90000\r\na=rtcp-fb:123 goog-remb\r\na=rtcp-fb:123 transport-cc\r\na=rtcp-fb:123 ccm fir\r\na=rtcp-fb:123 nack\r\na=rtcp-fb:123 nack pli\r\na=fmtp:123 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\na=rtpmap:119 rtx/90000\r\na=fmtp:119 apt=123\r\na=rtpmap:122 H265/90000\r\na=rtcp-fb:122 goog-remb\r\na=rtcp-fb:122 transport-cc\r\na=rtcp-fb:122 ccm fir\r\na=rtcp-fb:122 nack\r\na=rtcp-fb:122 nack pli\r\na=fmtp:122 level-id=93;profile-id=1;tier-flag=0;tx-mode=SRST\r\na=rtpmap:118 rtx/90000\r\na=fmtp:118 apt=122\r\na=rtpmap:117 red/90000\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=117\r\na=rtpmap:121 ulpfec/90000\r\na=rtpmap:45 flexfec-03/90000\r\na=rtcp-fb:45 goog-remb\r\na=rtcp-fb:45 transport-cc\r\na=fmtp:45 repair-window=10000000\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:2\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n","type":"answer"}
+[15:41:20.656] [Log] Quest-PeerId connection Browser-PeerId changed to Connected
+[15:41:20.751] [Log] [VideoManager] Video track agganciato al peer Browser-PeerId
+[15:41:20.759] [Log] DataChannel Browser-PeerId opened on Quest-PeerId.
+[15:41:20.759] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.48, 1.05, 4.53)   (delta dalla fisica: 0,7 cm, 2,00°)
+DOPO   : (-0.49, 1.05, 4.53)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.49, 1.05, 4.53)
+[15:41:23.121] [Log] Received WebSocket message: ANSWER|Browser-PeerId|Quest-PeerId|{"sdp":"v=0\r\no=- 8393807889939421505 4 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1 2\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 63981 UDP/TLS/RTP/SAVPF 9 0 8 13 127 125 110 126\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=inactive\r\na=rtcp-mux\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:127 opus/48000/2\r\na=rtcp-fb:127 transport-cc\r\na=fmtp:127 minptime=10;useinbandfec=1\r\na=rtpmap:125 red/48000/2\r\na=fmtp:125 127/127\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 54568 UDP/TLS/RTP/SAVPF 96 97 117 116 121\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:117 red/90000\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=117\r\na=rtpmap:121 ulpfec/90000\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:2\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n","type":"answer"}|0|False
+[15:41:23.124] [Log] Quest-PeerId got ANSWER from Browser-PeerId : {"sdp":"v=0\r\no=- 8393807889939421505 4 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1 2\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 63981 UDP/TLS/RTP/SAVPF 9 0 8 13 127 125 110 126\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=inactive\r\na=rtcp-mux\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:127 opus/48000/2\r\na=rtcp-fb:127 transport-cc\r\na=fmtp:127 minptime=10;useinbandfec=1\r\na=rtpmap:125 red/48000/2\r\na=fmtp:125 127/127\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 54568 UDP/TLS/RTP/SAVPF 96 97 117 116 121\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:117 red/90000\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=117\r\na=rtpmap:121 ulpfec/90000\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:2\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n","type":"answer"}
+[15:41:23.629] [Log] Received WebSocket message: ANSWER|Browser-PeerId|Quest-PeerId|{"sdp":"v=0\r\no=- 8393807889939421505 5 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1 2\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 63981 UDP/TLS/RTP/SAVPF 9 0 8 13 127 125 110 126\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=inactive\r\na=rtcp-mux\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:127 opus/48000/2\r\na=rtcp-fb:127 transport-cc\r\na=fmtp:127 minptime=10;useinbandfec=1\r\na=rtpmap:125 red/48000/2\r\na=fmtp:125 127/127\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 54568 UDP/TLS/RTP/SAVPF 96 97 117 116 121\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:117 red/90000\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=117\r\na=rtpmap:121 ulpfec/90000\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:2\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n","type":"answer"}|0|False
+[15:41:23.630] [Log] Quest-PeerId got ANSWER from Browser-PeerId : {"sdp":"v=0\r\no=- 8393807889939421505 5 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1 2\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS\r\nm=audio 63981 UDP/TLS/RTP/SAVPF 9 0 8 13 127 125 110 126\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 63981 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 63981 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=inactive\r\na=rtcp-mux\r\na=rtpmap:9 G722/8000\r\na=rtpmap:0 PCMU/8000\r\na=rtpmap:8 PCMA/8000\r\na=rtpmap:13 CN/8000\r\na=rtpmap:127 opus/48000/2\r\na=rtcp-fb:127 transport-cc\r\na=fmtp:127 minptime=10;useinbandfec=1\r\na=rtpmap:125 red/48000/2\r\na=fmtp:125 127/127\r\na=rtpmap:110 telephone-event/48000\r\na=rtpmap:126 telephone-event/8000\r\nm=video 54568 UDP/TLS/RTP/SAVPF 96 97 117 116 121\r\nc=IN IP4 79.50.217.190\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:4125376801 1 udp 2113937151 8369a4c9-cf82-4af0-a471-e3aa17fa1b29.local 54568 typ host generation 0 network-cost 999\r\na=candidate:1735717798 1 udp 1677729535 79.50.217.190 54568 typ srflx raddr 0.0.0.0 rport 0 generation 0 network-cost 999\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=recvonly\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 VP8/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:117 red/90000\r\na=rtpmap:116 rtx/90000\r\na=fmtp:116 apt=117\r\na=rtpmap:121 ulpfec/90000\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=ice-ufrag:Wecp\r\na=ice-pwd:Zk4dCzL3yi1dnwpGwIKc4HKK\r\na=ice-options:trickle\r\na=fingerprint:sha-256 9A:31:98:D4:D5:13:10:A1:CB:17:3F:93:01:65:44:E8:FE:A3:83:41:74:90:34:67:1D:86:74:33:09:A1:AD:7E\r\na=setup:passive\r\na=mid:2\r\na=sctp-port:5000\r\na=max-message-size:262144\r\n","type":"answer"}
+[15:41:23.634] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.43, 1.06, 4.55)   (delta dalla fisica: 0,7 cm, 2,19°)
+DOPO   : (-0.44, 1.06, 4.55)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.44, 1.06, 4.55)
+[15:41:25.407] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.54, 1.11, 4.49)   (delta dalla fisica: 1,7 cm, 4,83°)
+DOPO   : (-0.53, 1.11, 4.50)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.53, 1.11, 4.50)
+[15:41:27.095] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.55, 1.11, 4.48)   (delta dalla fisica: 1,6 cm, 3,88°)
+DOPO   : (-0.57, 1.11, 4.48)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.57, 1.11, 4.48)
+[15:41:28.342] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.44, 1.08, 4.54)   (delta dalla fisica: 4,0 cm, 12,46°)
+DOPO   : (-0.42, 1.11, 4.53)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.42, 1.11, 4.53)
+[15:41:29.589] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.49, 1.09, 4.54)   (delta dalla fisica: 5,3 cm, 19,02°)
+DOPO   : (-0.45, 1.07, 4.55)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.45, 1.07, 4.55)
+[15:41:30.696] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.47, 1.07, 4.53)   (delta dalla fisica: 1,8 cm, 1,69°)
+DOPO   : (-0.46, 1.07, 4.55)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.46, 1.07, 4.55)
+[15:41:31.541] [Log] [OVRManager] HMDUnmounted event
+[15:41:31.937] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.45, 1.07, 4.59)   (delta dalla fisica: 15,2 cm, 38,15°)
+DOPO   : (-0.44, 1.22, 4.57)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.44, 1.22, 4.57)
+[15:41:32.390] [Log] [MetaXRFeature] OnAppSpaceChange: 141
+[15:41:32.397] [Log] [MetaXRFeature] OnAppSpaceChange: 142
+[15:41:32.413] [Log] [OVRManager] HMDMounted event
+[15:41:32.415] [Log] Recenter event detected
+[15:41:33.190] [Log] [MetaXRFeature] OnAppSpaceChange: 143
+[15:41:33.192] [Log] [MetaXRFeature] OnAppSpaceChange: 144
+[15:41:33.193] [Log] [MetaXRFeature] OnAppSpaceChange: 145
+[15:41:33.221] [Log] Recenter event detected
+[15:41:33.227] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.44, 1.26, 4.53)   (delta dalla fisica: 0,7 cm, 2,85°)
+DOPO   : (-0.45, 1.26, 4.53)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.45, 1.26, 4.53)
+[15:41:34.462] [Log] [MetaXRFeature] OnAppSpaceChange: 146
+[15:41:34.462] [Log] [MetaXRFeature] OnAppSpaceChange: 147
+[15:41:34.463] [Log] [MetaXRFeature] OnAppSpaceChange: 148
+[15:41:34.470] [Log] Recenter event detected
+[15:41:34.475] [Log] [VRCamAligner] Posizione VRCam (before/after allineamento)
+PRIMA  : (-0.46, 1.24, 4.55)   (delta dalla fisica: 4,0 cm, 9,80°)
+DOPO   : (-0.42, 1.25, 4.54)   (delta dalla fisica: 0,0 cm)
+FISICA : (-0.42, 1.25, 4.54)
+[15:41:34.962] [Log] [MetaXRFeature] OnSessionStateChange: 5 -> 4
+[15:41:34.963] [Log] [MetaXRFeature] OnSessionStateChange: 4 -> 3
+[15:41:34.964] [Log] [MetaXRFeature] OnSessionStateChange: 3 -> 6
+[15:41:34.983] [Log] [MetaXRFeature] OnSessionEnd: 81
+[15:41:35.039] [Log] [MetaXRFeature] OnSessionStateChange: 6 -> 1
+[15:41:35.061] [Log] [OVRManager] InputFocusLost event
+[15:41:36.092] [Log] [OVRManager] OnApplicationPause(true)
+[15:41:36.286] [Log] [OVRManager] OnApplicationFocus(false)

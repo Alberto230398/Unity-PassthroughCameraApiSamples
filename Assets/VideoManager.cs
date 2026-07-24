@@ -34,6 +34,7 @@ public class VideoManager : MonoBehaviour
     void OnWebRTCConnected() => EnsureStreaming(null);
 
     float _nextReconcile;
+    bool _wasWebSocketActive;
 
     void Awake()
     {
@@ -48,6 +49,29 @@ public class VideoManager : MonoBehaviour
     {
         //if (OVRInput.GetDown(OVRInput.Button.Two) && currentSource != null)
             //SwitchSource((activeSourceIndex + 1) % sources.Length);
+
+        // Il pacchetto tiene un CancellationTokenSource "cts" readonly che viene cancellato ad
+        // ogni chiusura del WS (anche un primo TENTATIVO fallito, es. server non ancora acceso):
+        // essendo readonly non viene mai ricreato, quindi il SendLoop che spedisce i messaggi di
+        // signaling (NEWPEER/OFFER/ANSWER/CANDIDATE) resta morto per sempre anche se il WS poi si
+        // riconnette a livello di socket → "non si connette" anche quando il server è raggiungibile.
+        // Teniamo traccia di "connesso OPPURE tentativo in corso": quando questo stato torna a
+        // false (connessione riuscita poi caduta, O tentativo fallito da subito) sostituiamo il
+        // token con uno nuovo così il prossimo Connect() può ripartire a inviare messaggi.
+        // NB: niente CloseWebRTC()/StopAllCoroutines() qui: fermerebbe anche la coroutine
+        // WebRTC.Update() che pompa il plugin nativo, causando un freeze/10fps mentre lo
+        // streaming è ancora attivo (la pulizia dei peer morti la fa già EnsureStreaming ogni
+        // secondo controllando IceConnectionState).
+        bool wsActive = _webRTCConnection != null &&
+            (_webRTCConnection.IsWebSocketConnected || _webRTCConnection.ConnectionToWebSocketInProgress);
+        if (_wasWebSocketActive && !wsActive)
+        {
+            var manager = GetWebRTCManager();
+            var ctsField = manager?.GetType()
+                .GetField("cts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            ctsField?.SetValue(manager, new System.Threading.CancellationTokenSource());
+        }
+        _wasWebSocketActive = wsActive;
 
         // Button A: recovery manuale — ricrea il track e lo riaggancia a tutti i peer.
         // Utile per stati sporchi (es. browser caduto senza inviare DISPOSE: il peerConnection
