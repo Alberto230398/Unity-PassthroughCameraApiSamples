@@ -130,7 +130,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   WebSocketServerAddress: ws://10.10.10.147:8765
-  StunServerAddress: 
+  StunServerAddress: stun:stun.l.google.com:19302
   LocalPeerId: Quest-PeerId
   UseHTTPHeader: 0
   IsVideoAudioSender: 1

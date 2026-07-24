@@ -68,7 +68,8 @@
 <div id="overlay">NO SIGNAL</div>
 
 <div id="controls">
-  <input id="wsUrl" value="ws://10.10.10.147:8765" />
+  <!-- <input id="wsUrl" value="ws://10.10.10.147:8765" /> -->
+  <input id="wsUrl" value="ws://192.168.1.4:8765" />
   <input id="questId" class="short" value="Quest-PeerId" />
   <button id="btnConnect" onclick="connect()">Connect</button>
   <button id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
@@ -77,15 +78,36 @@
 
 <script>
 const PEER_ID = 'Browser-PeerId';
+const RETRY_MS = 10000;
 let ws, pc;
 let pendingCandidates = [];
 let remoteDescSet = false;
+let manualDisconnect = false;
+let retryTimer = null;
 
 function setStatus(s) { document.getElementById('status').textContent = s; }
-function showOverlay()  { document.getElementById('overlay').style.display = 'flex'; }
+function setOverlay(text, white) {
+  const el = document.getElementById('overlay');
+  el.textContent = text;
+  el.style.color = white ? '#fff' : '';
+  el.style.display = 'flex';
+}
+function showOverlay() { setOverlay('NO SIGNAL'); }
 function hideOverlay()  { document.getElementById('overlay').style.display = 'none'; }
 
+function scheduleRetry() {
+  if (retryTimer) return;   // già in attesa, non accavallare retry
+  setOverlay('WAITING FOR SERVER', true);
+  setStatus('waiting for server');
+  document.getElementById('btnConnect').disabled    = false;
+  document.getElementById('btnDisconnect').disabled = true;
+  retryTimer = setTimeout(() => { retryTimer = null; connect(); }, RETRY_MS);
+}
+
 function connect() {
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+  manualDisconnect = false;
+
   const url     = document.getElementById('wsUrl').value.trim();
   const questId = document.getElementById('questId').value.trim();
 
@@ -93,6 +115,7 @@ function connect() {
 
   ws.onopen = () => {
     setStatus('ws connected');
+    setOverlay('WAITING FOR VIDEO STREAM', true);
     ws.send(`CONNECT|${PEER_ID}|ALL|${PEER_ID} joined|0|False`);
     document.getElementById('btnConnect').disabled    = true;
     document.getElementById('btnDisconnect').disabled = false;
@@ -103,6 +126,8 @@ function connect() {
     const type    = parts[0];
     const sender  = parts[1];
     const payload = parts[3];
+
+    console.log(`[WS] ${type} from ${sender}`);
 
     switch (type) {
       case 'NEWPEER': {
@@ -115,6 +140,8 @@ function connect() {
           await createPeerConnection(sender);
           ws.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|False`);
           await sendOffer(sender);
+        } else {
+          console.warn(`[WS] NEWPEER da "${sender}" ignorato: non combacia con questId "${questId}"`);
         }
         break;
       }
@@ -122,6 +149,8 @@ function connect() {
         if (sender === questId && !pc) {
           await createPeerConnection(sender);
           await sendOffer(sender);
+        } else if (sender !== questId) {
+          console.warn(`[WS] NEWPEERACK da "${sender}" ignorato: non combacia con questId "${questId}"`);
         }
         break;
       }
@@ -164,7 +193,15 @@ function connect() {
     setStatus('disconnected');
     // Se il WS cade la negoziazione è persa; alla prossima connessione serve una pc fresca.
     closePeerConnection();
-    showOverlay();
+    document.getElementById('btnConnect').disabled    = false;
+    document.getElementById('btnDisconnect').disabled = true;
+
+    if (manualDisconnect) {
+      showOverlay();
+    } else {
+      // Server non raggiungibile (o caduto): ritenta da solo, niente click manuale.
+      scheduleRetry();
+    }
   };
   ws.onerror = () => setStatus('ws error');
 }
@@ -189,6 +226,7 @@ async function createPeerConnection(remotePeerId) {
   };
 
   pc.oniceconnectionstatechange = () => {
+    console.log(`[ICE] ${remotePeerId}: ${pc.iceConnectionState}`);
     setStatus(pc.iceConnectionState);
     // Mostra subito "NO SIGNAL" appena ICE fallisce/si disconnette, senza aspettare PEERLEFT.
     // Questo copre il caso in cui il Quest va in background ma il WS rimane aperto (TCP keepalive).
@@ -199,6 +237,7 @@ async function createPeerConnection(remotePeerId) {
   };
 
   pc.ontrack = e => {
+    console.log(`[TRACK] ricevuto ${e.track.kind} da ${remotePeerId}`);
     if (e.track.kind === 'video') {
       document.getElementById('video').srcObject = e.streams[0] || new MediaStream([e.track]);
       hideOverlay();
@@ -226,6 +265,8 @@ async function handleOffer(remotePeerId, payload) {
 }
 
 function disconnect() {
+  manualDisconnect = true;
+  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
   closePeerConnection();
   ws?.close(); ws = null;
   showOverlay();
@@ -233,6 +274,9 @@ function disconnect() {
   document.getElementById('btnDisconnect').disabled = true;
   setStatus('disconnected');
 }
+
+// Avvia da solo al caricamento della pagina: niente click su Connect necessario.
+window.addEventListener('DOMContentLoaded', connect);
 </script>
 </body>
 </html>
