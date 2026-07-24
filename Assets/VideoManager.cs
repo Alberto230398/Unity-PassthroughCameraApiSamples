@@ -180,6 +180,9 @@ public class VideoManager : MonoBehaviour
     }
 
     const ulong MaxBps = 2_500_000u;   // 2.5 Mbps: sostenibile per 960² su Wi-Fi
+    const ulong MinBps = 2_000_000u;   // forza l'encoder a partire vicino al target invece di
+                                        // rampare da zero (slow-start della bandwidth estimation
+                                        // di WebRTC) → niente scatti/bitrate basso nei primi secondi
     const uint MaxFps = 30u;           // cap framerate per non sforare la banda
 
     // Legge il campo privato webRTCManager dal WebRTCConnection via reflection.
@@ -209,6 +212,7 @@ public class VideoManager : MonoBehaviour
             foreach (var enc in param.encodings)
             {
                 enc.maxBitrate = MaxBps;
+                enc.minBitrate = MinBps;
                 enc.maxFramerate = MaxFps;
             }
             kv.Value.SetParameters(param);
