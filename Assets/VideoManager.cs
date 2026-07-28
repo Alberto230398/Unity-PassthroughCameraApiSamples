@@ -90,10 +90,11 @@ public class VideoManager : MonoBehaviour
         }
     }
 
-    // L'Oculus (sender) "streamma e basta": crea il video track una sola volta e lo aggancia ad
-    // ogni peer che ancora non ce l'ha. Il track NON viene smontato quando i peer se ne vanno,
-    // così ogni browser che si connette lo riceve. WebRTC richiede comunque un AddTrack per-peer:
-    // per questo iteriamo peerConnections e aggiungiamo solo dove manca (niente doppioni).
+    // L'Oculus (sender) "streamma e basta": aggancia il video track ad ogni peer stabile che
+    // ancora non ce l'ha. WebRTC richiede un AddTrack per-peer, quindi iteriamo peerConnections e
+    // aggiungiamo solo dove manca (niente doppioni). Il track vive per la durata di una SESSIONE:
+    // quando l'ultimo viewer se ne va (senders vuoto) viene disposto, e alla prossima connessione
+    // se ne crea uno fresco → nessuna latenza accumulata dal riuso dello stesso encoder.
     void EnsureStreaming(object manager)
     {
         if (_webRTCConnection == null || !_webRTCConnection.IsSender) return;
@@ -105,38 +106,46 @@ public class VideoManager : MonoBehaviour
         var senders = GetVideoSenders();
         if (senders == null) return;
 
-        bool addedAny = false;
-
-        // Snapshot: dentro il ciclo modifichiamo peers/senders (cleanup dei peer morti).
+        // Passata 1 — cleanup dei peer morti (browser chiuso o in riconnessione). Il pacchetto
+        // pulisce via PEERLEFT/DISPOSE/STALE-RECONNECT, ma se il SERVER è caduto quei messaggi
+        // non arrivano: qui rimuoviamo su ICE Disconnected/Failed/Closed come backstop, così alla
+        // riconnessione il peer è pulito e il video riparte da solo (fix "devo premere A").
         foreach (var kv in peers.ToList())
         {
-            var id = kv.Key;
-            var pc = kv.Value;
-            var state = pc.IceConnectionState;
-
-            // Peer morto (browser chiuso o in riconnessione): rimuovilo, così alla riconnessione
-            // il nuovo peerConnection è trattato pulito e riceve il video da solo (fix "devo premere A").
-            // Il pacchetto NON fa cleanup su ICE Disconnected/Failed.
+            var state = kv.Value.IceConnectionState;
             if (state == RTCIceConnectionState.Disconnected ||
                 state == RTCIceConnectionState.Failed ||
                 state == RTCIceConnectionState.Closed)
             {
-                pc.Close();
-                peers.Remove(id);
-                senders.Remove(id);
-                continue;
+                kv.Value.Close();
+                peers.Remove(kv.Key);
+                senders.Remove(kv.Key);
             }
+        }
 
-            if (senders.ContainsKey(id)) continue;   // questo peer ha già il video
+        // Fine sessione: se non resta nessun sender attivo, butta via il track (e il suo encoder).
+        // La prossima connessione ne crea uno fresco → niente latenza accumulata dal riuso dello
+        // stesso encoder (sintomo: dopo un restart del server lo stream torna ma con ~2s di ritardo).
+        if (senders.Count == 0 && _videoStreamTrack != null)
+        {
+            _videoStreamTrack.Dispose();
+            _videoStreamTrack = null;
+        }
+
+        // Passata 2 — aggancia il video ai peer stabili che ancora non ce l'hanno.
+        bool addedAny = false;
+        foreach (var kv in peers)
+        {
+            if (senders.ContainsKey(kv.Key)) continue;   // questo peer ha già il video
 
             // Aspetta che la negoziazione iniziale del peer sia conclusa: aggiungere il track a
             // metà negoziazione causa glare/rinegoziazioni → lag (fix "Quest prima, poi browser").
-            if (pc.SignalingState != RTCSignalingState.Stable) continue;
+            if (kv.Value.SignalingState != RTCSignalingState.Stable) continue;
 
-            _videoStreamTrack ??= new VideoStreamTrack(CreateVideo());   // creato una sola volta (avvia anche il blit)
-            senders[id] = pc.AddTrack(_videoStreamTrack);               // registra il sender nel dict del pacchetto
+            _videoStreamTrack ??= new VideoStreamTrack(CreateVideo());   // creato fresco a inizio sessione (avvia anche il blit)
+            senders[kv.Key] = kv.Value.AddTrack(_videoStreamTrack);      // registra il sender nel dict del pacchetto
             addedAny = true;
-            Debug.Log($"[VideoManager] Video track agganciato al peer {id}");
+            Debug.Log($"[VideoManager] Video track agganciato al peer {kv.Key}");
         }
 
         if (addedAny)
