@@ -17,7 +17,13 @@ public class MicManager : MonoBehaviour
         textMeshProUGUI.text = micList;
 
         AudioClip clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
-        audioSource.PlayOneShot(clip);
+        audioSource.clip = clip;
+        if (clip == null)
+        {
+            Debug.LogError("Failed to start microphone.");
+            return;
+        }
+        audioSource.Play();
 
         textMeshProUGUI.text = micList;
     }
