@@ -117,7 +117,7 @@ public class VideoManager : MonoBehaviour
         }
 
         // 2) Nessun viewer rimasto → chiudi la sessione buttando il track (e il suo encoder).
-        if (senders.Count == 0 && _videoStreamTrack != null)
+        if (senders.Count == 0 && _videoStreamTrack != null && audioSenders.Count == 0)
         {
             _videoStreamTrack.Dispose();
             _videoStreamTrack = null;
@@ -148,7 +148,7 @@ public class VideoManager : MonoBehaviour
 
         // 4) Rinforza il cap ogni tick: una rinegoziazione o il BWE potrebbero averlo azzerato.
         if (senders.Count > 0) ApplyCap(senders);
-        if (audioSenders.Count > 0) ApplyCap(audioSenders);
+        //if (audioSenders.Count > 0) ApplyCap(audioSenders);
     }
 
     // Button A: distrugge il track corrente e riaggancia da zero.
@@ -178,17 +178,22 @@ public class VideoManager : MonoBehaviour
         return camRenderTexture;
     }
 
-    public AudioSource CreateAudio()
+    // Avvia il microfono e restituisce l'AudioSource che lo riproduce. Unity.WebRTC cattura l'audio
+    // via OnAudioFilterRead sull'AudioSource, quindi DEVE essere in Play() e in loop: senza, il filtro
+    // non gira e il track è muto. Per NON sentirsi in locale, instrada l'Output dell'AudioSource su un
+    // AudioMixerGroup silenziato (−80 dB): NON usare volume/mute, azzererebbero anche il segnale catturato.
+    AudioSource CreateAudio()
     {
-        AudioClip clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
-        if (clip == null)
+        if (Microphone.devices.Length == 0)
         {
-            Debug.LogError("Failed to start microphone.");
+            Debug.LogError("[VideoManager] Nessun microfono disponibile (permesso RECORD_AUDIO non concesso?).");
             return null;
         }
 
-        audioSource.clip = clip;
-
+        // loop=true: il buffer di 10s viene riscritto in cerchio, così il mic registra all'infinito.
+        audioSource.clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
+        audioSource.loop = true;   // l'AudioSource rilegge in loop il clip che il mic aggiorna
+        audioSource.Play();        // ← senza questo il track è muto: fa girare OnAudioFilterRead
         return audioSource;
     }
 
@@ -244,6 +249,13 @@ public class VideoManager : MonoBehaviour
             ?.Invoke(manager, null);
         _videoStreamTrack.Dispose();
         _videoStreamTrack = null;
+
+        if (_audioStreamTrack == null) return;
+        manager?.GetType()
+            .GetMethod("RemoveAudioTrack", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            ?.Invoke(manager, null);
+        _audioStreamTrack.Dispose();
+        _audioStreamTrack = null;
     }
 
     object GetWebRTCManager() =>
