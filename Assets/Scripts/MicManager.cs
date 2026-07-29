@@ -14,7 +14,7 @@ public class MicManager : MonoBehaviour
             micList += device + "\n";
         }
 
-        textMeshProUGUI.text = micList;
+        //textMeshProUGUI.text = micList;
 
         AudioClip clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
         audioSource.clip = clip;
@@ -25,7 +25,7 @@ public class MicManager : MonoBehaviour
         }
         audioSource.Play();
 
-        textMeshProUGUI.text = micList;
+        //textMeshProUGUI.text = micList;
     }
 
     // Update is called once per frame

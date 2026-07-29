@@ -10,6 +10,7 @@ using UnityEngine;
 public class VideoManager : MonoBehaviour
 {
     [SerializeField] MonoBehaviour[] videoSources;   // MonoBehaviour che implementano VideoInterface
+    [SerializeField] AudioSource audioSource;
     [SerializeField] int activeSourceIndex = 0;
     [Tooltip("Se ON l'Oculus aggancia il video ai peer da solo; se OFF solo col Button A.")]
     [SerializeField] bool autoStream = true;
@@ -20,6 +21,8 @@ public class VideoManager : MonoBehaviour
     VideoInterface currentSource;
     WebRTCConnection _webRTCConnection;
     VideoStreamTrack _videoStreamTrack;  // track corrente; vive per una sessione (vedi EnsureStreaming)
+    AudioStreamTrack _audioStreamTrack;  // track audio
+
 
     float _nextReconcile;                // tempo del prossimo tick del poll
     bool _wasWebSocketActive;            // stato WS al frame precedente, per rilevarne la caduta
@@ -93,6 +96,7 @@ public class VideoManager : MonoBehaviour
 
         var peers = GetPeerConnections(manager);
         var senders = GetVideoSenders();
+        var audioSenders = GetAudioSenders();
         if (peers == null || senders == null) return;
 
         // 1) Rimuovi i peer morti. Il pacchetto pulisce via PEERLEFT/DISPOSE, ma se il SERVER è
@@ -108,6 +112,7 @@ public class VideoManager : MonoBehaviour
                 kv.Value.Close();
                 peers.Remove(kv.Key);
                 senders.Remove(kv.Key);
+                audioSenders.Remove(kv.Key);
             }
         }
 
@@ -116,6 +121,9 @@ public class VideoManager : MonoBehaviour
         {
             _videoStreamTrack.Dispose();
             _videoStreamTrack = null;
+
+            _audioStreamTrack?.Dispose();
+            _audioStreamTrack = null;
         }
 
         // 3) Aggancia il track ai peer stabili senza video. Il gate SignalingState==Stable evita di
@@ -128,7 +136,10 @@ public class VideoManager : MonoBehaviour
             if (kv.Value.SignalingState != RTCSignalingState.Stable) continue;
 
             _videoStreamTrack ??= new VideoStreamTrack(CreateVideo());
+            _audioStreamTrack ??= new AudioStreamTrack(CreateAudio());
+
             senders[kv.Key] = kv.Value.AddTrack(_videoStreamTrack);   // registra il sender nel dict del pacchetto
+            audioSenders[kv.Key] = kv.Value.AddTrack(_audioStreamTrack);   // registra il sender nel dict del pacchetto
             addedAny = true;
             Debug.Log($"[VideoManager] Video agganciato al peer {kv.Key}");
         }
@@ -137,6 +148,7 @@ public class VideoManager : MonoBehaviour
 
         // 4) Rinforza il cap ogni tick: una rinegoziazione o il BWE potrebbero averlo azzerato.
         if (senders.Count > 0) ApplyCap(senders);
+        if (audioSenders.Count > 0) ApplyCap(audioSenders);
     }
 
     // Button A: distrugge il track corrente e riaggancia da zero.
@@ -164,6 +176,20 @@ public class VideoManager : MonoBehaviour
         }
         SwitchSource(activeSourceIndex);
         return camRenderTexture;
+    }
+
+    public AudioSource CreateAudio()
+    {
+        AudioClip clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
+        if (clip == null)
+        {
+            Debug.LogError("Failed to start microphone.");
+            return null;
+        }
+
+        audioSource.clip = clip;
+
+        return audioSource;
     }
 
     void SwitchSource(int index)
@@ -235,6 +261,14 @@ public class VideoManager : MonoBehaviour
         var manager = GetWebRTCManager();
         return manager?.GetType()
             .GetField("videoTrackSenders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+            ?.GetValue(manager) as System.Collections.Generic.Dictionary<string, RTCRtpSender>;
+    }
+
+     System.Collections.Generic.Dictionary<string, RTCRtpSender> GetAudioSenders()
+    {
+        var manager = GetWebRTCManager();
+        return manager?.GetType()
+            .GetField("audioTrackSenders", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.GetValue(manager) as System.Collections.Generic.Dictionary<string, RTCRtpSender>;
     }
 }
