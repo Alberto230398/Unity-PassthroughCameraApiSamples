@@ -23,6 +23,8 @@ public class VideoManager : MonoBehaviour
     VideoStreamTrack _videoStreamTrack;  // track corrente; vive per una sessione (vedi EnsureStreaming)
     AudioStreamTrack _audioStreamTrack;  // track audio
 
+    MediaStream mediaStream;                // stream che contiene il track video/audio (per il peer)
+
 
     float _nextReconcile;                // tempo del prossimo tick del poll
     bool _wasWebSocketActive;            // stato WS al frame precedente, per rilevarne la caduta
@@ -124,6 +126,9 @@ public class VideoManager : MonoBehaviour
 
             _audioStreamTrack?.Dispose();
             _audioStreamTrack = null;
+
+            mediaStream?.Dispose();
+            mediaStream = null;
         }
 
         // 3) Aggancia il track ai peer stabili senza video. Il gate SignalingState==Stable evita di
@@ -135,11 +140,12 @@ public class VideoManager : MonoBehaviour
             if (senders.ContainsKey(kv.Key)) continue;
             if (kv.Value.SignalingState != RTCSignalingState.Stable) continue;
 
+            mediaStream = new MediaStream();
             _videoStreamTrack ??= new VideoStreamTrack(CreateVideo());
             _audioStreamTrack ??= new AudioStreamTrack(CreateAudio());
 
-            senders[kv.Key] = kv.Value.AddTrack(_videoStreamTrack);   // registra il sender nel dict del pacchetto
-            audioSenders[kv.Key] = kv.Value.AddTrack(_audioStreamTrack);   // registra il sender nel dict del pacchetto
+            senders[kv.Key] = kv.Value.AddTrack(_videoStreamTrack, mediaStream);   // registra il sender nel dict del pacchetto
+            audioSenders[kv.Key] = kv.Value.AddTrack(_audioStreamTrack, mediaStream);   // registra il sender nel dict del pacchetto
             addedAny = true;
             Debug.Log($"[VideoManager] Video agganciato al peer {kv.Key}");
         }
