@@ -68,8 +68,8 @@
 <div id="overlay">NO SIGNAL</div>
 
 <div id="controls">
-  <input id="wsUrl" value="ws://10.10.10.147:8765" />
-  <!-- <input id="wsUrl" value="ws://192.168.1.4:8765" /> -->
+  <!-- <input id="wsUrl" value="ws://10.10.10.147:8765" />-->
+  <input id="wsUrl" value="ws://192.168.1.18:8765" />
   <!-- <input id="wsUrl" value="ws://10.10.10.74:8765" /> -->
   <input id="questId" class="short" value="Quest-PeerId" />
   <button id="btnConnect" onclick="connect()">Connect</button>
@@ -87,7 +87,8 @@ let remoteDescSet = false;
 let manualDisconnect = false;
 let retryTimer = null;
 let inboundStream = null;   // stream condiviso: raccoglie video + audio dalle rinegoziazioni
-let audioEnabled = false;   // l'autoplay parte muto; l'utente attiva l'audio con un click
+let audioEnabled = true;    // proviamo a partire con l'audio; se il browser blocca, si sblocca al primo gesto
+let gestureArmed = false;   // listener "sblocca audio al primo click/tasto" già installato?
 
 function setStatus(s) { document.getElementById('status').textContent = s; }
 function setOverlay(text, white) {
@@ -270,6 +271,9 @@ async function createPeerConnection(remotePeerId) {
     if (e.track.kind === 'video') {
       hideOverlay();
     } else if (e.track.kind === 'audio') {
+      // Minimizza il jitter buffer del browser: in LAN la rete è stabile, così togliamo
+      // la latenza di buffering lato ricezione (su reti instabili alzare questo valore).
+      try { if ('jitterBufferTarget' in e.receiver) e.receiver.jitterBufferTarget = 0; } catch (_) {}
       // C'è audio in arrivo: sblocca il pulsante. La riproduzione con suono richiede però
       // un gesto dell'utente (policy autoplay), quindi resta muto finché non clicca "Audio On".
       document.getElementById('btnAudio').disabled = false;
@@ -282,8 +286,33 @@ function applyAudioState() {
   const video = document.getElementById('video');
   video.muted = !audioEnabled;
   document.getElementById('btnAudio').textContent = audioEnabled ? 'Audio On' : 'Audio Off';
-  // Riprova a partire: se eravamo muti l'autoplay girava già; da smuto serve il play() nel gesto.
-  video.play().catch(() => {});
+
+  const p = video.play();
+  if (audioEnabled && p) {
+    // Il browser può rifiutare l'autoplay con suono (policy). In quel caso teniamo il video
+    // muto (così almeno le immagini partono) e armiamo lo sblocco al primo gesto utente.
+    p.catch(() => {
+      video.muted = true;
+      document.getElementById('btnAudio').textContent = 'Audio Off';
+      armGestureUnlock();
+    });
+  }
+}
+
+// Sblocca l'audio al PRIMO gesto qualsiasi sulla pagina (click, tasto, touch), non solo sul
+// pulsante: così basta toccare lo schermo una volta invece di centrare il bottone.
+function armGestureUnlock() {
+  if (gestureArmed) return;
+  gestureArmed = true;
+  const unlock = () => {
+    gestureArmed = false;
+    ['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+      window.removeEventListener(ev, unlock));
+    audioEnabled = true;
+    applyAudioState();
+  };
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
+    window.addEventListener(ev, unlock, { once: false }));
 }
 
 function toggleAudio() {

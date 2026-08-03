@@ -197,7 +197,7 @@ public class VideoManager : MonoBehaviour
         }
 
         // loop=true: il buffer di 10s viene riscritto in cerchio, così il mic registra all'infinito.
-        audioSource.clip = Microphone.Start(Microphone.devices[0], true, 10, 44100);
+        audioSource.clip = Microphone.Start(Microphone.devices[0], true, 1, AudioSettings.outputSampleRate);
         audioSource.loop = true;   // l'AudioSource rilegge in loop il clip che il mic aggiorna
         audioSource.Play();        // ← senza questo il track è muto: fa girare OnAudioFilterRead
         return audioSource;
