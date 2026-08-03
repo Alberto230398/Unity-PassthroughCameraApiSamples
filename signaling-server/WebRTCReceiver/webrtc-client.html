@@ -74,6 +74,7 @@
   <input id="questId" class="short" value="Quest-PeerId" />
   <button id="btnConnect" onclick="connect()">Connect</button>
   <button id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
+  <button id="btnAudio" onclick="toggleAudio()" disabled>Audio Off</button>
   <span id="status">disconnected</span>
 </div>
 
@@ -85,6 +86,8 @@ let pendingCandidates = [];
 let remoteDescSet = false;
 let manualDisconnect = false;
 let retryTimer = null;
+let inboundStream = null;   // stream condiviso: raccoglie video + audio dalle rinegoziazioni
+let audioEnabled = false;   // l'autoplay parte muto; l'utente attiva l'audio con un click
 
 function setStatus(s) { document.getElementById('status').textContent = s; }
 function setOverlay(text, white) {
@@ -216,7 +219,9 @@ function closePeerConnection() {
   if (pc) { pc.close(); pc = null; }
   pendingCandidates = [];
   remoteDescSet = false;
+  inboundStream = null;
   document.getElementById('video').srcObject = null;
+  document.getElementById('btnAudio').disabled = true;
 }
 
 async function createPeerConnection(remotePeerId) {
@@ -245,11 +250,45 @@ async function createPeerConnection(remotePeerId) {
 
   pc.ontrack = e => {
     console.log(`[TRACK] ricevuto ${e.track.kind} da ${remotePeerId}`);
+    // Il Quest aggiunge video e audio con due AddTrack distinti. Se partono nello stesso frame
+    // finiscono in un'unica offerta (una sola negoziazione, due m-line); se l'audio viene
+    // abilitato dopo, arriva con una rinegoziazione. In entrambi i casi ontrack scatta una volta
+    // per track, e non è garantito che condividano lo stesso e.streams[]. Per questo li
+    // raccogliamo noi in un unico MediaStream agganciato al <video>, così video e audio vengono
+    // riprodotti dallo stesso elemento indipendentemente da come sono stati negoziati.
+    if (!inboundStream) inboundStream = new MediaStream();
+
+    // Dopo una rinegoziazione dello stesso kind rimpiazza il vecchio track, niente duplicati.
+    inboundStream.getTracks()
+      .filter(t => t.kind === e.track.kind)
+      .forEach(t => inboundStream.removeTrack(t));
+    inboundStream.addTrack(e.track);
+
+    const video = document.getElementById('video');
+    if (video.srcObject !== inboundStream) video.srcObject = inboundStream;
+
     if (e.track.kind === 'video') {
-      document.getElementById('video').srcObject = e.streams[0] || new MediaStream([e.track]);
       hideOverlay();
+    } else if (e.track.kind === 'audio') {
+      // C'è audio in arrivo: sblocca il pulsante. La riproduzione con suono richiede però
+      // un gesto dell'utente (policy autoplay), quindi resta muto finché non clicca "Audio On".
+      document.getElementById('btnAudio').disabled = false;
+      applyAudioState();
     }
   };
+}
+
+function applyAudioState() {
+  const video = document.getElementById('video');
+  video.muted = !audioEnabled;
+  document.getElementById('btnAudio').textContent = audioEnabled ? 'Audio On' : 'Audio Off';
+  // Riprova a partire: se eravamo muti l'autoplay girava già; da smuto serve il play() nel gesto.
+  video.play().catch(() => {});
+}
+
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  applyAudioState();
 }
 
 async function handleOffer(remotePeerId, payload) {
