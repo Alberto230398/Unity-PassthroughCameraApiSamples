@@ -1,0 +1,4 @@
+# dipendenze e artefatti di build TypeScript
+node_modules/
+dist/
+*.tsbuildinfo

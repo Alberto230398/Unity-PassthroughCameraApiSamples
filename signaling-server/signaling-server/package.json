@@ -1,6 +1,17 @@
 {
   "name": "simplewebrtc-signaling",
   "version": "1.0.0",
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "ws": "^8.0.0" }
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/server.js",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "ws": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.4.0"
+  }
 }

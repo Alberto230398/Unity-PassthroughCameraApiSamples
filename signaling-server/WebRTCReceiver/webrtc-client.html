@@ -12,12 +12,25 @@
     width: 100vw; height: 100vh;
   }
 
-  video {
+  #video {
     position: fixed; inset: 0;
     width: 100%; height: 100%;
     object-fit: contain;
     display: block;
     background: #000;
+  }
+
+  /* self-view (webcam locale inviata al Quest): piccolo riquadro in basso a destra */
+  #localVideo {
+    position: fixed; right: 14px; bottom: 64px;
+    width: 220px; max-width: 30vw;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border: 1px solid #333;
+    background: #111;
+    transform: scaleX(-1);   /* effetto specchio, come ci si aspetta da una self-view */
+    display: none;           /* mostrato quando la webcam locale è attiva */
+    z-index: 5;
   }
 
   #overlay {
@@ -65,6 +78,7 @@
 <body>
 
 <video id="video" autoplay playsinline muted></video>
+<video id="localVideo" autoplay playsinline muted></video>
 <div id="overlay">NO SIGNAL</div>
 
 <div id="controls">
@@ -72,280 +86,15 @@
   <input id="wsUrl" value="ws://192.168.1.18:8765" />
   <!-- <input id="wsUrl" value="ws://10.10.10.74:8765" /> -->
   <input id="questId" class="short" value="Quest-PeerId" />
-  <button id="btnConnect" onclick="connect()">Connect</button>
-  <button id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
-  <button id="btnAudio" onclick="toggleAudio()" disabled>Audio Off</button>
+  <button id="btnConnect">Connect</button>
+  <button id="btnDisconnect" disabled>Disconnect</button>
+  <button id="btnAudio" disabled>Audio Off</button>
   <span id="status">disconnected</span>
 </div>
 
-<script>
-const PEER_ID = 'Browser-PeerId';
-const RETRY_MS = 10000;
-let ws, pc;
-let pendingCandidates = [];
-let remoteDescSet = false;
-let manualDisconnect = false;
-let retryTimer = null;
-let inboundStream = null;   // stream condiviso: raccoglie video + audio dalle rinegoziazioni
-let audioEnabled = true;    // proviamo a partire con l'audio; se il browser blocca, si sblocca al primo gesto
-let gestureArmed = false;   // listener "sblocca audio al primo click/tasto" già installato?
-
-function setStatus(s) { document.getElementById('status').textContent = s; }
-function setOverlay(text, white) {
-  const el = document.getElementById('overlay');
-  el.textContent = text;
-  el.style.color = white ? '#fff' : '';
-  el.style.display = 'flex';
-}
-function showOverlay() { setOverlay('NO SIGNAL'); }
-function hideOverlay()  { document.getElementById('overlay').style.display = 'none'; }
-
-function scheduleRetry() {
-  if (retryTimer) return;   // già in attesa, non accavallare retry
-  setOverlay('WAITING FOR SERVER', true);
-  setStatus('waiting for server');
-  document.getElementById('btnConnect').disabled    = false;
-  document.getElementById('btnDisconnect').disabled = true;
-  retryTimer = setTimeout(() => { retryTimer = null; connect(); }, RETRY_MS);
-}
-
-function connect() {
-  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-  manualDisconnect = false;
-
-  const url     = document.getElementById('wsUrl').value.trim();
-  const questId = document.getElementById('questId').value.trim();
-
-  ws = new WebSocket(url);
-
-  ws.onopen = () => {
-    setStatus('ws connected');
-    setOverlay('WAITING FOR VIDEO STREAM', true);
-    ws.send(`CONNECT|${PEER_ID}|ALL|${PEER_ID} joined|0|False`);
-    document.getElementById('btnConnect').disabled    = true;
-    document.getElementById('btnDisconnect').disabled = false;
-  };
-
-  ws.onmessage = async (e) => {
-    const parts   = e.data.split('|');
-    const type    = parts[0];
-    const sender  = parts[1];
-    const payload = parts[3];
-
-    console.log(`[WS] ${type} from ${sender}`);
-
-    switch (type) {
-      case 'NEWPEER': {
-        if (sender === questId) {
-          // Quest si è (ri)registrato: chiudi sempre la pc vecchia prima di crearne una nuova.
-          // Senza questo, dopo che il Quest esce e rientra dall'app la pc precedente
-          // rimane aperta e createPeerConnection() la riutilizzava (if pc return),
-          // causando negoziazione su una connessione già morta → lag.
-          closePeerConnection();
-          await createPeerConnection(sender);
-          ws.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|False`);
-          // NIENTE offerta dal browser: fa SOLO da answerer. Il Quest crea la sua offerta da
-          // solo (OnNegotiationNeeded sul data channel + VideoManager che aggancia il video).
-          // Se offrissero entrambi in contemporanea → glare: SetLocalDescription sul Quest
-          // fallisce e il pacchetto lancia "LocalDescription is not exist", che pianta la
-          // coroutine WebRTC.Update() → app bloccata. Un solo offerente = niente gara.
-        } else {
-          console.warn(`[WS] NEWPEER da "${sender}" ignorato: non combacia con questId "${questId}"`);
-        }
-        break;
-      }
-      case 'NEWPEERACK': {
-        if (sender === questId && !pc) {
-          // Anche qui il browser fa solo da answerer: crea la pc e aspetta l'OFFER del Quest.
-          await createPeerConnection(sender);
-        } else if (sender !== questId) {
-          console.warn(`[WS] NEWPEERACK da "${sender}" ignorato: non combacia con questId "${questId}"`);
-        }
-        break;
-      }
-      case 'OFFER':
-        await handleOffer(sender, payload);
-        break;
-      case 'ANSWER':
-        await pc.setRemoteDescription(JSON.parse(payload));
-        remoteDescSet = true;
-        for (const c of pendingCandidates) {
-          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
-        }
-        pendingCandidates = [];
-        break;
-      case 'CANDIDATE': {
-        try {
-          const c = JSON.parse(payload);
-          if (remoteDescSet) {
-            await pc.addIceCandidate(new RTCIceCandidate(c));
-          } else {
-            pendingCandidates.push(c);
-          }
-        } catch (_) {}
-        break;
-      }
-      case 'PEERLEFT': {
-        // Il server invia PEERLEFT quando un peer perde il WebSocket senza DISPOSE
-        // (es. Quest va in background). Chiudiamo la pc così quando il Quest rientra
-        // e manda NEWPEER partiamo da zero invece di riutilizzare una pc morta.
-        if (sender === questId) {
-          closePeerConnection();
-          // Il WS col server è ancora vivo: non è "NO SIGNAL", è solo il Quest che manca.
-          setOverlay('WAITING FOR VIDEO STREAM', true);
-        }
-        break;
-      }
-    }
-  };
-
-  ws.onclose = () => {
-    setStatus('disconnected');
-    // Se il WS cade la negoziazione è persa; alla prossima connessione serve una pc fresca.
-    closePeerConnection();
-    document.getElementById('btnConnect').disabled    = false;
-    document.getElementById('btnDisconnect').disabled = true;
-
-    if (manualDisconnect) {
-      showOverlay();
-    } else {
-      // Server non raggiungibile (o caduto): ritenta da solo, niente click manuale.
-      scheduleRetry();
-    }
-  };
-  ws.onerror = () => setStatus('ws error');
-}
-
-function closePeerConnection() {
-  if (pc) { pc.close(); pc = null; }
-  pendingCandidates = [];
-  remoteDescSet = false;
-  inboundStream = null;
-  document.getElementById('video').srcObject = null;
-  document.getElementById('btnAudio').disabled = true;
-}
-
-async function createPeerConnection(remotePeerId) {
-  if (pc) return;
-  pendingCandidates = [];
-  remoteDescSet = false;
-
-  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-
-  pc.onicecandidate = e => {
-    if (e.candidate)
-      ws.send(`CANDIDATE|${PEER_ID}|${remotePeerId}|${JSON.stringify(e.candidate)}|0|False`);
-  };
-
-  pc.oniceconnectionstatechange = () => {
-    console.log(`[ICE] ${remotePeerId}: ${pc.iceConnectionState}`);
-    setStatus(pc.iceConnectionState);
-    // Mostra subito "NO SIGNAL" appena ICE fallisce/si disconnette, senza aspettare PEERLEFT.
-    // Questo copre il caso in cui il Quest va in background ma il WS rimane aperto (TCP keepalive).
-    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-      document.getElementById('video').srcObject = null;
-      // Il WS col server è ancora vivo: non è "NO SIGNAL", è solo il Quest che manca.
-      setOverlay('WAITING FOR VIDEO STREAM', true);
-    }
-  };
-
-  pc.ontrack = e => {
-    console.log(`[TRACK] ricevuto ${e.track.kind} da ${remotePeerId}`);
-    // Il Quest aggiunge video e audio con due AddTrack distinti. Se partono nello stesso frame
-    // finiscono in un'unica offerta (una sola negoziazione, due m-line); se l'audio viene
-    // abilitato dopo, arriva con una rinegoziazione. In entrambi i casi ontrack scatta una volta
-    // per track, e non è garantito che condividano lo stesso e.streams[]. Per questo li
-    // raccogliamo noi in un unico MediaStream agganciato al <video>, così video e audio vengono
-    // riprodotti dallo stesso elemento indipendentemente da come sono stati negoziati.
-    if (!inboundStream) inboundStream = new MediaStream();
-
-    // Dopo una rinegoziazione dello stesso kind rimpiazza il vecchio track, niente duplicati.
-    inboundStream.getTracks()
-      .filter(t => t.kind === e.track.kind)
-      .forEach(t => inboundStream.removeTrack(t));
-    inboundStream.addTrack(e.track);
-
-    const video = document.getElementById('video');
-    if (video.srcObject !== inboundStream) video.srcObject = inboundStream;
-
-    if (e.track.kind === 'video') {
-      hideOverlay();
-    } else if (e.track.kind === 'audio') {
-      // Minimizza il jitter buffer del browser: in LAN la rete è stabile, così togliamo
-      // la latenza di buffering lato ricezione (su reti instabili alzare questo valore).
-      try { if ('jitterBufferTarget' in e.receiver) e.receiver.jitterBufferTarget = 0; } catch (_) {}
-      // C'è audio in arrivo: sblocca il pulsante. La riproduzione con suono richiede però
-      // un gesto dell'utente (policy autoplay), quindi resta muto finché non clicca "Audio On".
-      document.getElementById('btnAudio').disabled = false;
-      applyAudioState();
-    }
-  };
-}
-
-function applyAudioState() {
-  const video = document.getElementById('video');
-  video.muted = !audioEnabled;
-  document.getElementById('btnAudio').textContent = audioEnabled ? 'Audio On' : 'Audio Off';
-
-  const p = video.play();
-  if (audioEnabled && p) {
-    // Il browser può rifiutare l'autoplay con suono (policy). In quel caso teniamo il video
-    // muto (così almeno le immagini partono) e armiamo lo sblocco al primo gesto utente.
-    p.catch(() => {
-      video.muted = true;
-      document.getElementById('btnAudio').textContent = 'Audio Off';
-      armGestureUnlock();
-    });
-  }
-}
-
-// Sblocca l'audio al PRIMO gesto qualsiasi sulla pagina (click, tasto, touch), non solo sul
-// pulsante: così basta toccare lo schermo una volta invece di centrare il bottone.
-function armGestureUnlock() {
-  if (gestureArmed) return;
-  gestureArmed = true;
-  const unlock = () => {
-    gestureArmed = false;
-    ['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
-      window.removeEventListener(ev, unlock));
-    audioEnabled = true;
-    applyAudioState();
-  };
-  ['pointerdown', 'keydown', 'touchstart'].forEach(ev =>
-    window.addEventListener(ev, unlock, { once: false }));
-}
-
-function toggleAudio() {
-  audioEnabled = !audioEnabled;
-  applyAudioState();
-}
-
-async function handleOffer(remotePeerId, payload) {
-  if (!pc) await createPeerConnection(remotePeerId);
-  await pc.setRemoteDescription(JSON.parse(payload));
-  remoteDescSet = true;
-  for (const c of pendingCandidates) {
-    try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) {}
-  }
-  pendingCandidates = [];
-  const answer = await pc.createAnswer();
-  await pc.setLocalDescription(answer);
-  ws.send(`ANSWER|${PEER_ID}|${remotePeerId}|${JSON.stringify(answer)}|0|False`);
-}
-
-function disconnect() {
-  manualDisconnect = true;
-  if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
-  closePeerConnection();
-  ws?.close(); ws = null;
-  showOverlay();
-  document.getElementById('btnConnect').disabled    = false;
-  document.getElementById('btnDisconnect').disabled = true;
-  setStatus('disconnected');
-}
-
-// Avvia da solo al caricamento della pagina: niente click su Connect necessario.
-window.addEventListener('DOMContentLoaded', connect);
-</script>
+<!-- Logica in TypeScript: sorgente in src/client.ts, compilato in dist/client.js con `npm run build`.
+     Script classico (non module) così si carica anche aprendo il file via file:// (Chrome blocca
+     i module da file://). client.ts non ha import, quindi non serve un bundler. -->
+<script src="./dist/client.js"></script>
 </body>
 </html>

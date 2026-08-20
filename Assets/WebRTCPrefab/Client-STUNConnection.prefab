@@ -134,7 +134,7 @@ MonoBehaviour:
   LocalPeerId: Quest-PeerId
   UseHTTPHeader: 0
   IsVideoAudioSender: 1
-  IsVideoAudioReceiver: 0
+  IsVideoAudioReceiver: 1
   RandomUniquePeerId: 0
   ShowLogs: 1
   ShowDataChannelLogs: 1
