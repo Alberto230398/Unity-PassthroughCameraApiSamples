@@ -5,6 +5,11 @@
 const PEER_ID = "Browser-PeerId";
 const RETRY_MS = 10000;
 
+// TEST A/B: metti a false per tornare "solo ricezione" (come il setup che funzionava prima,
+// niente webcam/mic inviati al Quest). Serve a capire se è proprio l'invio browser→Quest a far
+// piantare la negoziazione sul Quest. true = videochiamata bidirezionale.
+const SEND_TO_QUEST = true;
+
 // --- riferimenti DOM (lo script è un modulo: viene eseguito a DOM pronto) ---
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -59,7 +64,7 @@ function connect(): void {
 
   // Chiedi subito webcam+mic, così il permesso appare all'apertura e lo stream è pronto
   // quando arriva l'offerta del Quest (lo aggancieremo all'answer).
-  void ensureLocalMedia();
+  if (SEND_TO_QUEST) void ensureLocalMedia();
 
   const url = wsUrlEl.value.trim();
   const questId = questIdEl.value.trim();
@@ -69,9 +74,10 @@ function connect(): void {
   ws.onopen = () => {
     setStatus("ws connected");
     setOverlay("WAITING FOR VIDEO STREAM", true);
-    // Ultimo campo = IsVideoAudioSender: True così il Quest, se è IsVideoAudioReceiver,
-    // crea le RawImage/AudioSource per ricevere la nostra webcam+mic (WebRTCManager.cs).
-    ws!.send(`CONNECT|${PEER_ID}|ALL|${PEER_ID} joined|0|True`);
+    // Ultimo campo = IsVideoAudioSender: se inviamo, il Quest (se IsVideoAudioReceiver) crea le
+    // RawImage/AudioSource per ricevere la nostra webcam+mic. In modalità "solo ricezione"
+    // dichiariamo False, così il Quest non prepara nulla → comportamento identico al setup vecchio.
+    ws!.send(`CONNECT|${PEER_ID}|ALL|${PEER_ID} joined|0|${SEND_TO_QUEST ? "True" : "False"}`);
     btnConnect.disabled = true;
     btnDisconnect.disabled = false;
   };
@@ -93,7 +99,7 @@ function connect(): void {
           // causando negoziazione su una connessione già morta → lag.
           closePeerConnection();
           await createPeerConnection(sender);
-          ws!.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|True`);
+          ws!.send(`NEWPEERACK|${PEER_ID}|${sender}|ack|0|${SEND_TO_QUEST ? "True" : "False"}`);
           // NIENTE offerta dal browser: fa SOLO da answerer. Il Quest crea la sua offerta da
           // solo. Se offrissero entrambi in contemporanea → glare. Un solo offerente = niente gara.
         } else {
@@ -266,7 +272,14 @@ function toggleAudio(): void {
 function ensureLocalMedia(): Promise<MediaStream | null> {
   if (localStream) return Promise.resolve(localStream);
   if (!localMediaPromise) {
-    localMediaPromise = navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    // Risoluzione/fps contenuti: il Quest deve decodificare questo stream MENTRE codifica il suo
+    // passthrough. Tenere la webcam a 480p/20fps riduce il rischio di saturare il Wi-Fi e di
+    // freeze del decoder (perdita di keyframe). Alza questi valori solo se la rete regge.
+    const constraints: MediaStreamConstraints = {
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 20, max: 24 } },
+      audio: { echoCancellation: true, noiseSuppression: true },
+    };
+    localMediaPromise = navigator.mediaDevices.getUserMedia(constraints)
       .then((s) => {
         localStream = s;
         localVideoEl.srcObject = s;
@@ -311,8 +324,10 @@ async function handleOffer(remotePeerId: string, payload: string): Promise<void>
   await pc.setRemoteDescription(JSON.parse(payload) as RTCSessionDescriptionInit);
   remoteDescSet = true;
   // Prima di rispondere, aggancia la nostra webcam+mic alle m-line sendrecv del Quest.
-  await ensureLocalMedia();
-  attachLocalTracks();
+  if (SEND_TO_QUEST) {
+    await ensureLocalMedia();
+    attachLocalTracks();
+  }
   for (const c of pendingCandidates) {
     try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) { /* ignora */ }
   }
@@ -320,6 +335,27 @@ async function handleOffer(remotePeerId: string, payload: string): Promise<void>
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
   ws?.send(`ANSWER|${PEER_ID}|${remotePeerId}|${JSON.stringify(answer)}|0|True`);
+  await capOutgoingVideoBitrate();
+}
+
+// Limita il bitrate/framerate del video che INVIAMO al Quest, per non saturare l'uplink Wi-Fi
+// (che il Quest condivide col proprio stream in uscita). Va chiamata dopo setLocalDescription,
+// quando il sender ha già i suoi parametri di encoding.
+async function capOutgoingVideoBitrate(maxKbps = 800, maxFps = 20): Promise<void> {
+  if (!pc) return;
+  for (const sender of pc.getSenders()) {
+    if (!sender.track || sender.track.kind !== "video") continue;
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+    params.encodings[0].maxBitrate = maxKbps * 1000;
+    params.encodings[0].maxFramerate = maxFps;
+    try {
+      await sender.setParameters(params);
+      console.log(`[MEDIA] bitrate video in uscita limitato a ${maxKbps} kbps / ${maxFps} fps`);
+    } catch (e) {
+      console.warn("[MEDIA] setParameters fallito:", e);
+    }
+  }
 }
 
 function disconnect(): void {

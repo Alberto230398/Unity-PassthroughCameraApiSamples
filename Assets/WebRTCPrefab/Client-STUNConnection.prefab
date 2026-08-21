@@ -129,7 +129,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7588ce98b751e28419e83a73016454e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  WebSocketServerAddress: ws://192.168.1.106:8765
+  WebSocketServerAddress: ws://172.20.10.13:8765
   StunServerAddress: stun:stun.l.google.com:19302
   LocalPeerId: Quest-PeerId
   UseHTTPHeader: 0
@@ -164,7 +164,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   StartStopVideoTransmission: 0
-  VideoResolution: {x: 1280, y: 720}
+  VideoResolution: {x: 640, y: 640}
   StreamingCamera: {fileID: 5615718780042072591}
   OptionalPreviewRawImage: {fileID: 0}
   ReceivingRawImagesParent: {fileID: 0}
