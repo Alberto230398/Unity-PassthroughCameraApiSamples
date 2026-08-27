@@ -509,16 +509,16 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 163771726}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 134}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalPosition: {x: 0, y: 0, z: 243}
+  m_LocalScale: {x: 0.2, y: 0.2, z: 0.2}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 746706241}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 463, y: 247}
+  m_AnchoredPosition: {x: 90, y: 122}
   m_SizeDelta: {x: 836, y: 494}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &164463232
@@ -1742,7 +1742,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &746706241
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1751,15 +1751,15 @@ RectTransform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 746706240}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalPosition: {x: 0, y: 0, z: 101}
+  m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 163771730}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -368, y: -197}
+  m_AnchoredPosition: {x: -192, y: -197}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &746706242
@@ -4665,7 +4665,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9056062534241220868, guid: 9ec3eb95f035bc84e8389a5176edf47a, type: 3}
       propertyPath: WebSocketServerAddress
-      value: ws://192.168.1.106:8765
+      value: ws://192.168.1.7:8765
       objectReference: {fileID: 0}
     - target: {fileID: 9056062534241220868, guid: 9ec3eb95f035bc84e8389a5176edf47a, type: 3}
       propertyPath: ReceivingRawImagesParent

@@ -10,6 +10,11 @@ const RETRY_MS = 10000;
 // piantare la negoziazione sul Quest. true = videochiamata bidirezionale.
 const SEND_TO_QUEST = true;
 
+// Tetto di bitrate (kbps) sul video che il QUEST invia a noi. Lo imponiamo via SDP nell'answer
+// (b=AS): senza questo il Quest trasmette a bitrate libero, satura il Wi-Fi e la latenza cresce
+// nel tempo. Abbassa se il feed Quest→PC continua a laggare, alza se lo vedi troppo sgranato.
+const QUEST_VIDEO_MAX_KBPS = 1500;
+
 // --- riferimenti DOM (lo script è un modulo: viene eseguito a DOM pronto) ---
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -333,9 +338,32 @@ async function handleOffer(remotePeerId: string, payload: string): Promise<void>
   }
   pendingCandidates = [];
   const answer = await pc.createAnswer();
+  // Limita il bitrate del video in ARRIVO dal Quest scrivendolo nell'SDP dell'answer.
+  if (answer.sdp) answer.sdp = limitVideoBandwidthInSdp(answer.sdp, QUEST_VIDEO_MAX_KBPS);
   await pc.setLocalDescription(answer);
   ws?.send(`ANSWER|${PEER_ID}|${remotePeerId}|${JSON.stringify(answer)}|0|True`);
   await capOutgoingVideoBitrate();
+}
+
+// Aggiunge/sostituisce una riga `b=AS:<kbps>` su ogni sezione video dell'SDP. Nell'answer questo
+// segnala al mittente remoto (il Quest) di non superare quel bitrate sul suo video in uscita →
+// evita che saturi l'uplink Wi-Fi e accumuli latenza. Tocca solo il video, non l'audio.
+function limitVideoBandwidthInSdp(sdp: string, kbps: number): string {
+  const eol = sdp.includes("\r\n") ? "\r\n" : "\n";
+  const out: string[] = [];
+  let inVideo = false;
+  for (const line of sdp.split(/\r?\n/)) {
+    if (line.startsWith("m=")) {
+      inVideo = line.startsWith("m=video");
+      out.push(line);
+      continue;
+    }
+    // togli eventuali limiti già presenti nella sezione video: li rimettiamo noi dopo la c=
+    if (inVideo && (line.startsWith("b=AS:") || line.startsWith("b=TIAS:"))) continue;
+    out.push(line);
+    if (inVideo && line.startsWith("c=")) out.push(`b=AS:${kbps}`);
+  }
+  return out.join(eol);
 }
 
 // Limita il bitrate/framerate del video che INVIAMO al Quest, per non saturare l'uplink Wi-Fi
