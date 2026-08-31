@@ -31,9 +31,14 @@ public class VideoManager : MonoBehaviour
 
     // Cap di banda sui sender. Senza, la bandwidth-estimation di WebRTC rampa da zero e satura il
     // Wi-Fi → lag/freeze. min≈target fa partire l'encoder vicino al target invece che in slow-start.
-    const ulong MaxBps = 2_500_000u;   // 2.5 Mbps: sostenibile per 960² su Wi-Fi
-    const ulong MinBps = 2_000_000u;
-    const uint MaxFps = 30u;
+    // Tetto UNICO del bitrate Quest→PC (prima c'era anche un b=AS lato browser che lo contraddiceva
+    // e faceva collassare gli fps). Intervallo coerente min<max, così l'encoder può regolarsi senza
+    // essere costretto a scendere di framerate. Alza verso 2.5M se il Wi-Fi regge; abbassa se lagga.
+    const ulong MaxBps = 1_500_000u;   // 1.5 Mbps
+    const ulong MinBps = 1_000_000u;   // 1.0 Mbps
+    // 20 invece di 30: un encoder software che non tiene 30fps realtime accumula ritardo; a 20fps
+    // fluidi la latenza resta stabile. Meglio 20 costanti che 30 che scivolano indietro.
+    const uint MaxFps = 20u;
 
     void Awake()
     {
@@ -174,10 +179,12 @@ public class VideoManager : MonoBehaviour
     public RenderTexture CreateVideo()
     {
         // RT riusata tra le connessioni: riallocarla senza Release() perdeva ~6.5MB di VRAM a giro.
-        // 960² invece di 1280²: a 1280² l'encoder VP8 software non reggeva il realtime → freeze.
+        // 640² (era 960²): l'encoder VP8 SOFTWARE non regge il realtime ad alta risoluzione, specie
+        // mentre il Quest decodifica anche il video PC→Quest → l'arretrato cresce e la latenza sale
+        // nel tempo. Meno pixel = l'encoder sta al passo. (720² se serve più dettaglio e il Quest regge.)
         if (camRenderTexture == null)
         {
-            camRenderTexture = new RenderTexture(960, 960, 0, RenderTextureFormat.BGRA32);
+            camRenderTexture = new RenderTexture(640, 640, 0, RenderTextureFormat.BGRA32);
             camRenderTexture.Create();
         }
         SwitchSource(activeSourceIndex);

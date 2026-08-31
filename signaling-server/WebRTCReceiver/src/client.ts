@@ -10,11 +10,6 @@ const RETRY_MS = 10000;
 // piantare la negoziazione sul Quest. true = videochiamata bidirezionale.
 const SEND_TO_QUEST = true;
 
-// Tetto di bitrate (kbps) sul video che il QUEST invia a noi. Lo imponiamo via SDP nell'answer
-// (b=AS): senza questo il Quest trasmette a bitrate libero, satura il Wi-Fi e la latenza cresce
-// nel tempo. Abbassa se il feed Quest→PC continua a laggare, alza se lo vedi troppo sgranato.
-const QUEST_VIDEO_MAX_KBPS = 1500;
-
 // --- riferimenti DOM (lo script è un modulo: viene eseguito a DOM pronto) ---
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -122,7 +117,11 @@ function connect(): void {
         break;
       }
       case "OFFER":
-        await handleOffer(sender, payload);
+        // NON await qui: mettiamo l'offerta in coda e la processiamo una alla volta.
+        // Il Quest rinegozia più volte di fila (VideoManager aggancia i track e ri-offre); se
+        // gestissimo le offerte in parallelo, la 2ª setRemoteDescription partirebbe mentre la 1ª
+        // non ha finito → signaling state intermedio → InvalidStateError. La coda le serializza.
+        enqueueOffer(sender, payload);
         break;
       case "ANSWER":
         if (!pc) break;
@@ -323,6 +322,19 @@ function attachLocalTracks(): void {
   }
 }
 
+// Coda di negoziazione: le offerte del Quest vengono processate STRETTAMENTE una alla volta.
+// Ogni nuova offerta si accoda alla precedente; il .catch evita che un errore su una singola
+// offerta diventi un "Unhandled Promise Rejection" e spezzi il resto.
+let negotiationChain: Promise<void> = Promise.resolve();
+function enqueueOffer(remotePeerId: string, payload: string): void {
+  negotiationChain = negotiationChain
+    .then(() => handleOffer(remotePeerId, payload))
+    .catch((err: unknown) => {
+      const e = err as Error;
+      console.warn(`[NEGO] offerta non applicata: ${e.name} - ${e.message}`);
+    });
+}
+
 async function handleOffer(remotePeerId: string, payload: string): Promise<void> {
   if (!pc) await createPeerConnection(remotePeerId);
   if (!pc) return;
@@ -338,32 +350,12 @@ async function handleOffer(remotePeerId: string, payload: string): Promise<void>
   }
   pendingCandidates = [];
   const answer = await pc.createAnswer();
-  // Limita il bitrate del video in ARRIVO dal Quest scrivendolo nell'SDP dell'answer.
-  if (answer.sdp) answer.sdp = limitVideoBandwidthInSdp(answer.sdp, QUEST_VIDEO_MAX_KBPS);
+  // NB: il bitrate del video in ARRIVO dal Quest lo governa il Quest stesso (VideoManager.ApplyCap).
+  // Qui NON imponiamo un b=AS: farlo sotto il minBitrate dell'encoder del Quest lo costringeva a
+  // crollare il framerate. Un tetto solo, e nel posto giusto (lato sender).
   await pc.setLocalDescription(answer);
   ws?.send(`ANSWER|${PEER_ID}|${remotePeerId}|${JSON.stringify(answer)}|0|True`);
   await capOutgoingVideoBitrate();
-}
-
-// Aggiunge/sostituisce una riga `b=AS:<kbps>` su ogni sezione video dell'SDP. Nell'answer questo
-// segnala al mittente remoto (il Quest) di non superare quel bitrate sul suo video in uscita →
-// evita che saturi l'uplink Wi-Fi e accumuli latenza. Tocca solo il video, non l'audio.
-function limitVideoBandwidthInSdp(sdp: string, kbps: number): string {
-  const eol = sdp.includes("\r\n") ? "\r\n" : "\n";
-  const out: string[] = [];
-  let inVideo = false;
-  for (const line of sdp.split(/\r?\n/)) {
-    if (line.startsWith("m=")) {
-      inVideo = line.startsWith("m=video");
-      out.push(line);
-      continue;
-    }
-    // togli eventuali limiti già presenti nella sezione video: li rimettiamo noi dopo la c=
-    if (inVideo && (line.startsWith("b=AS:") || line.startsWith("b=TIAS:"))) continue;
-    out.push(line);
-    if (inVideo && line.startsWith("c=")) out.push(`b=AS:${kbps}`);
-  }
-  return out.join(eol);
 }
 
 // Limita il bitrate/framerate del video che INVIAMO al Quest, per non saturare l'uplink Wi-Fi
