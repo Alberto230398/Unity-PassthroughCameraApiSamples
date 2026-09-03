@@ -10,6 +10,11 @@ const RETRY_MS = 10000;
 // piantare la negoziazione sul Quest. true = videochiamata bidirezionale.
 const SEND_TO_QUEST = true;
 
+// Codec video preferito. Su Quest H264 usa l'encoder/decoder HARDWARE (MediaCodec), mentre VP8/VP9
+// sono software e la CPU non regge il realtime → latenza crescente. Forzando H264 nella nostra
+// answer, il Quest passa all'encoder hardware. Metti "" per lasciare la scelta di default a WebRTC.
+const PREFER_VIDEO_CODEC = "H264";
+
 // --- riferimenti DOM (lo script è un modulo: viene eseguito a DOM pronto) ---
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
@@ -335,6 +340,33 @@ function enqueueOffer(remotePeerId: string, payload: string): void {
     });
 }
 
+// Riordina i codec del/i transceiver video mettendo quello scelto (es. H264) in cima, così l'answer
+// lo dichiara per primo e il mittente (Quest) lo usa. Va chiamata DOPO setRemoteDescription (i
+// transceiver esistono) e PRIMA di createAnswer. Riordina soltanto, non filtra: se il codec scelto
+// mancasse resta il default, senza rompere la negoziazione.
+function preferVideoCodec(codec: string): void {
+  if (!pc || typeof RTCRtpReceiver.getCapabilities !== "function") return;
+  const caps = RTCRtpReceiver.getCapabilities("video");
+  if (!caps) return;
+  const want = `video/${codec.toLowerCase()}`;
+  const wanted = caps.codecs.filter((c) => c.mimeType.toLowerCase() === want);
+  if (wanted.length === 0) {
+    console.warn(`[CODEC] ${codec} non disponibile in ricezione: lascio il default`);
+    return;
+  }
+  const ordered = [...wanted, ...caps.codecs.filter((c) => c.mimeType.toLowerCase() !== want)];
+  for (const t of pc.getTransceivers()) {
+    if (t.receiver?.track?.kind === "video" && typeof t.setCodecPreferences === "function") {
+      try {
+        t.setCodecPreferences(ordered);
+        console.log(`[CODEC] preferisco ${codec} sul video`);
+      } catch (e) {
+        console.warn("[CODEC] setCodecPreferences fallito:", e);
+      }
+    }
+  }
+}
+
 async function handleOffer(remotePeerId: string, payload: string): Promise<void> {
   if (!pc) await createPeerConnection(remotePeerId);
   if (!pc) return;
@@ -349,6 +381,8 @@ async function handleOffer(remotePeerId: string, payload: string): Promise<void>
     try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_) { /* ignora */ }
   }
   pendingCandidates = [];
+  // Preferisci H264 (encoder HARDWARE sul Quest) PRIMA di creare l'answer, così finisce nell'SDP.
+  if (PREFER_VIDEO_CODEC) preferVideoCodec(PREFER_VIDEO_CODEC);
   const answer = await pc.createAnswer();
   // NB: il bitrate del video in ARRIVO dal Quest lo governa il Quest stesso (VideoManager.ApplyCap).
   // Qui NON imponiamo un b=AS: farlo sotto il minBitrate dell'encoder del Quest lo costringeva a

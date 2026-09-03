@@ -29,16 +29,14 @@ public class VideoManager : MonoBehaviour
     float _nextReconcile;                // tempo del prossimo tick del poll
     bool _wasWebSocketActive;            // stato WS al frame precedente, per rilevarne la caduta
 
-    // Cap di banda sui sender. Senza, la bandwidth-estimation di WebRTC rampa da zero e satura il
-    // Wi-Fi → lag/freeze. min≈target fa partire l'encoder vicino al target invece che in slow-start.
-    // Tetto UNICO del bitrate Quest→PC (prima c'era anche un b=AS lato browser che lo contraddiceva
-    // e faceva collassare gli fps). Intervallo coerente min<max, così l'encoder può regolarsi senza
-    // essere costretto a scendere di framerate. Alza verso 2.5M se il Wi-Fi regge; abbassa se lagga.
+    // TETTO del bitrate Quest→PC. Solo un MASSIMO: NIENTE minBitrate.
+    // Un minBitrate è un PAVIMENTO che impedisce alla congestion control (GCC) di scendere quando il
+    // link non regge: l'encoder continua a spingere più di quanto il Wi-Fi trasporta, l'eccesso si
+    // accumula nelle code (driver Wi-Fi/router) e la latenza CRESCE all'infinito → bufferbloat.
+    // In bidirezionale è peggio: il Wi-Fi è half-duplex, le due direzioni si dividono lo stesso
+    // tempo radio, quindi la capacità reale per direzione si dimezza e il pavimento sfonda prima.
     const ulong MaxBps = 1_500_000u;   // 1.5 Mbps
-    const ulong MinBps = 1_000_000u;   // 1.0 Mbps
-    // 20 invece di 30: un encoder software che non tiene 30fps realtime accumula ritardo; a 20fps
-    // fluidi la latenza resta stabile. Meglio 20 costanti che 30 che scivolano indietro.
-    const uint MaxFps = 20u;
+    const uint MaxFps = 30u;           // con H264 hardware il framerate non è più il collo di bottiglia
 
     void Awake()
     {
@@ -157,7 +155,9 @@ public class VideoManager : MonoBehaviour
         if (addedAny)
             _webRTCConnection.CreateOfferCoroutine();   // una sola rinegoziazione per tutti i nuovi peer
 
-        // 4) Rinforza il cap ogni tick: una rinegoziazione o il BWE potrebbero averlo azzerato.
+        // 4) Rinforza il TETTO ogni tick (una rinegoziazione può resettarlo). Attenzione: qui si
+        //    rimette solo il massimo. Se il bitrate effettivo è sceso è la congestion control che
+        //    sta lavorando: NON va "riportato su", altrimenti si accumula ritardo in rete.
         if (senders.Count > 0) ApplyCap(senders);
         //if (audioSenders.Count > 0) ApplyCap(audioSenders);
     }
@@ -226,8 +226,10 @@ public class VideoManager : MonoBehaviour
             foreach (var enc in param.encodings)
             {
                 enc.maxBitrate = MaxBps;
-                enc.minBitrate = MinBps;
                 enc.maxFramerate = MaxFps;
+                // NIENTE enc.minBitrate: se la congestion control abbassa il bitrate NON è un guasto
+                // da "correggere", è il sistema che si adatta al link. Rimetterle un pavimento ogni
+                // secondo la neutralizzava e faceva accumulare ritardo.
             }
             kv.Value.SetParameters(param);
         }
